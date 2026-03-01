@@ -1,0 +1,274 @@
+# AI Knowledge Source Triage Bot — Design Doc
+
+**Date:** 2026-03-01
+**Status:** Approved
+**Author:** Claude (brainstorming session with user)
+
+---
+
+## Problem Statement
+
+Manually filtering signal from noise in an X.com/Twitter feed is time-consuming. The goal is an automated bot that receives links shared in a Telegram channel, analyzes their informational value, strips marketing BS, and produces structured summaries — with valuable sources archived in Notion and linked back to relevant personal projects.
+
+---
+
+## Architecture
+
+**Approach:** Modular Python package (Approach B)
+
+```
+ai-knowledge-source-triage/
+├── bot/
+│   ├── telegram/
+│   │   ├── handler.py      # message reception, URL parsing, reply dispatch
+│   │   └── formatter.py    # Telegram message formatting
+│   ├── fetcher/
+│   │   ├── twitter.py      # twikit wrapper (tweets + X Articles primary)
+│   │   ├── playwright.py   # Playwright headless (X Article fallback + JS-heavy pages)
+│   │   ├── github.py       # GitHub REST API (README, metadata, stars)
+│   │   └── article.py      # httpx + BeautifulSoup4 (simple HTML articles)
+│   ├── analyzer/
+│   │   ├── pipeline.py     # Claude call orchestration
+│   │   └── prompts.py      # all system prompts as constants
+│   ├── notion/
+│   │   ├── writer.py       # Notion page creation
+│   │   └── projects.py     # project context loader (cached, 24h refresh)
+│   └── config.py           # env var loading and validation
+├── tasks/
+│   ├── todo.md
+│   └── lessons.md
+├── docs/plans/
+│   └── 2026-03-01-ai-knowledge-triage-design.md
+├── .env                    # secrets — never commit
+├── .env.example            # template for onboarding
+├── .gitignore
+├── requirements.txt
+├── main.py                 # entry point
+├── claude.md
+└── systemd/
+    └── triage-bot.service  # Oracle Cloud VPS deployment
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Reason |
+|---|---|---|
+| Runtime | Python 3.12 | Best ecosystem for all required libraries |
+| Telegram | python-telegram-bot v21 (async) | Standard, well-documented, async-native |
+| X.com (primary) | twikit | Free, no API key required, session-based |
+| X.com (fallback) | Playwright + Chromium headless | JS-rendered pages, X Articles |
+| Articles | httpx + BeautifulSoup4 → Playwright fallback | Simple HTML first, JS fallback |
+| GitHub | GitHub REST API (free tier, 60 req/h) | README, stars, description, language |
+| AI Analysis | Claude API (Haiku 4.5 + Sonnet 4.6) | See model selection below |
+| Notion | notion-client (official Python SDK) | Page creation, project context |
+| Config | python-dotenv | Standard env var management |
+| Hosting | Oracle Cloud Free Forever (ARM) | Zero cost, 4 OCPU, 24GB RAM |
+| Process mgmt | systemd | Native on Oracle Linux |
+| Logging | loguru | Structured, rotating logs |
+
+---
+
+## Data Flow
+
+```
+[User] → forwards/shares URL to Telegram group
+         ↓
+[Telegram Handler]
+  - extracts URL from message
+  - sends "⏳ Analyzuji..." reply
+  - enqueues to asyncio.Queue
+         ↓
+[Fetcher — content type detection]
+  ├── x.com/*/status/*   → twikit.get_tweet()
+  │                         └─ if fails → Playwright fallback
+  ├── x.com/i/article/*  → twikit (if supported)
+  │                         └─ if fails → Playwright fallback
+  ├── github.com/*/*      → GitHub REST API
+  └── other URL           → httpx + BS4
+                            └─ if JS-rendered → Playwright fallback
+         ↓
+[Secondary link detection]
+  - scan fetched content for embedded URLs
+  - fetch GitHub/article links found in tweets
+         ↓
+[Analyzer — Claude Pipeline]
+
+  Phase 1: Credibility Check (claude-haiku-4-5)
+    Input:  author name, follower count, verified status, tweet text
+    Output: { credibility_score: 1-5, credibility_reason: string }
+
+  Phase 2: Value Assessment (claude-haiku-4-5)
+    Input:  full content (tweet + secondary)
+    Output: { has_value: bool, value_score: 1-5, rejection_reason: string|null }
+
+  Phase 3A — if has_value = true (claude-sonnet-4-6):
+    Input:  full content + projects_context (from Notion cache)
+    Output: {
+      title: string (generated or extracted, max 80 chars),
+      core_summary: string (2-3 sentences, no BS),
+      key_principles: string[],
+      use_cases: string[],
+      discovery_score: 1-5,
+      tags: string[],
+      project_recommendations: [
+        { project_name, relevance: high|medium|low, how_to_apply }
+      ]
+    }
+
+  Phase 3B — if has_value = false (claude-haiku-4-5):
+    Output: {
+      brief_summary: string|null,
+      rejection_reason: string
+    }
+         ↓
+[Notion Writer] — only if has_value = true
+  - creates subpage under "ICT Project R&D Resources"
+  - title: generated by Claude from context
+  - page body: summary, principles, use cases, project recs
+  - properties: source URL, discovery score, tags, date, author, content type
+         ↓
+[Telegram Formatter]
+  - always replies (even on error)
+  - reply quotes the original message for context
+
+  Valuable source:
+    ✅ Hodnotný zdroj | ★★★★☆ (4/5)
+    📌 Obsah: ...
+    🔑 Klíčové body: ...
+    🎯 Relevantní pro: Projekt A, Projekt B
+    📖 Notion: [link]
+
+  Low-value source:
+    ❌ Nízká hodnota
+    💭 Shrnutí: ...
+    🚫 Proč: ...
+
+  Error (partial or full):
+    ⚠️ [specific error description]
+    [whatever was successfully analyzed]
+```
+
+---
+
+## Title Generation
+
+Priority order for Notion page title:
+1. GitHub repo → `{owner}/{repo-name}`
+2. X Article → extracted `<title>` tag if exists
+3. General article → `<title>` tag
+4. Tweet or untitled content → Claude generates max 80-char title from core content
+
+Claude instruction: _"Title must be factual and descriptive of what the thing DOES, not hype."_
+
+---
+
+## Claude Model Selection
+
+| Phase | Model | Rationale |
+|---|---|---|
+| Phase 1 — Credibility | claude-haiku-4-5 | Simple structured decision, cheap |
+| Phase 2 — Value check | claude-haiku-4-5 | Binary decision with reason, cheap |
+| Phase 3A — Full analysis | claude-sonnet-4-6 | Complex analysis + project recommendations |
+| Phase 3B — Rejection | claude-haiku-4-5 | Short output, simple task |
+
+Estimated cost per analyzed source: ~$0.01–0.03
+
+All Claude calls: structured JSON output, no prose parsing required.
+
+---
+
+## Session & Rate Limiting
+
+**twikit session:**
+- Login once at startup, persist session to `cookies.json` (gitignored)
+- On 401/session expiry: re-authenticate once, retry
+- Credentials in `.env`: `TWITTER_USERNAME`, `TWITTER_PASSWORD`, `TWITTER_EMAIL`
+
+**Rate limiting:**
+- X.com requests: random 2–5s delay between calls (human-like pattern)
+- Playwright: 30s page load timeout
+- GitHub API: free tier 60 req/h (sufficient); optional `GITHUB_TOKEN` for 5000 req/h
+- Claude API: exponential backoff on 429 (2^n seconds, max 3 retries)
+- Notion API: exponential backoff on rate limit errors
+
+**Message queue:**
+- `asyncio.Queue` for incoming Telegram messages
+- Sequential processing (no parallelism) — avoids rate limit spikes
+- Appropriate for personal-use volume
+
+---
+
+## Error Handling
+
+| Failure | Behavior |
+|---|---|
+| twikit fetch fails | Try Playwright fallback |
+| Playwright timeout | Reply with partial analysis + warning |
+| Claude API error (after retries) | Reply "⚠️ Analýza selhala, zkus znovu." |
+| Notion API error | Full analysis sent as Telegram text + "⚠️ Notion záznam se nepodařilo vytvořit." |
+| Unsupported URL type | "⚠️ Tento typ odkazu není podporován." |
+| Bot never silently fails | Always replies to user |
+
+---
+
+## Notion Integration
+
+**Project context** (`notion/projects.py`):
+- Loaded at startup, refreshed every 24h
+- Reads subpages under "Projects" Notion page (ICT Projects section)
+- Extracts: project name, description, technologies
+- Passed as `projects_context` string to Phase 3A Claude prompt
+
+**Page creation** (`notion/writer.py`):
+- Parent: `ICT Project R&D Resources` (ID: `316c70a6c8c8806c9bc4f3fd04213a89`)
+- Properties: Source URL, Discovery Score (1–5), Tags (multi-select), Date Added, Author, Content Type
+- Body blocks: Core Summary, Key Principles (bullets), Use Cases (bullets), Project Recommendations (toggles), Original Source (bookmark)
+
+---
+
+## Deployment (Oracle Cloud Free Forever)
+
+- ARM instance, Ubuntu/Oracle Linux
+- systemd service: auto-restart on crash, start on boot
+- Logs: `loguru` rotating files, 10MB max, 7-day retention
+  - `logs/bot.log` — all levels
+  - `logs/errors.log` — ERROR and above only
+- Per-request log: `timestamp | url | content_type | has_value | score | duration_ms`
+
+---
+
+## Environment Variables
+
+```bash
+# Telegram
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_GROUP_ID=
+
+# X.com (twikit)
+TWITTER_USERNAME=
+TWITTER_PASSWORD=
+TWITTER_EMAIL=
+
+# Claude
+ANTHROPIC_API_KEY=
+
+# Notion
+NOTION_API_KEY=
+NOTION_RND_PAGE_ID=316c70a6c8c8806c9bc4f3fd04213a89
+NOTION_PROJECTS_PAGE_ID=90ae7fd720c246bb945524f439ea10e3
+
+# Optional
+GITHUB_TOKEN=
+```
+
+---
+
+## Out of Scope (v1)
+
+- Multi-user support
+- Web dashboard
+- Database persistence (logs are sufficient for v1)
+- Support for non-X.com social platforms (Reddit, HN) — future extension point
+- Paywalled article bypass
