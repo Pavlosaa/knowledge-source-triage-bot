@@ -1,0 +1,17 @@
+[Unit]
+Description=AI Knowledge Source Triage Bot
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/ai-knowledge-source-triage
+ExecStart=/home/ubuntu/ai-knowledge-source-triage/.venv/bin/python main.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
