@@ -24,6 +24,9 @@ class AnalysisResult:
     brief_summary: str | None = None
     rejection_reason: str | None = None
 
+    # Topic classification (Notion category)
+    topic: str | None = None
+
     # Credibility
     credibility_score: int | None = None
     credibility_reason: str | None = None
