@@ -7,22 +7,22 @@
 - [x] config.py — validate all required env vars at startup with fail-fast
 - [ ] Add claude.md project specifics section (carry-over, low priority)
 
-## ✅ Phase 1: Telegram Bot Skeleton — DONE (code ready, needs live bot token)
+## ✅ Phase 1: Telegram Bot Skeleton — DONE
 - [x] Implement handler.py — receive messages, extract URLs
 - [x] Implement asyncio.Queue for sequential processing
 - [x] Send "⏳ Analyzuji..." placeholder reply + delete on completion
 - [x] formatter.py — valuable / low-value / error templates (HTML)
 - [x] main.py — entry point, wires config + queue + bot
-- [ ] Create Telegram bot via @BotFather + fill .env (manual step)
-- [ ] Smoke test: bot receives message and echoes URL back
+- [x] Create Telegram bot via @BotFather + fill .env (done manually)
+- [x] Smoke test: bot receives messages and processes URLs ✅ live
 
-## ✅ Phase 4: Notion Integration — DONE (code ready, needs API token in .env)
+## ✅ Phase 4: Notion Integration — DONE
 - [x] projects.py — ProjectsCache: load project pages from Notion, 24h TTL
 - [x] writer.py — NotionWriter: find-or-create "AI Sources" database on first run
 - [x] writer.py — database properties: Topic, Score, Tags, URL, Author, Date, Projects
-- [x] writer.py — page body blocks: Summary, Principles, Use Cases, Project Recs (toggles), Source bookmark
+- [x] writer.py — page body blocks: Shrnutí, Klíčové poznatky, Využití, Relevance pro projekty (toggles), Zdroj bookmark
 - [x] prompts.py — topic classification added to Phase 3A (6 predefined categories)
-- [ ] Integration test against live Notion (needs API token)
+- [x] All output in Czech (prompts, Notion headings) ✅ live
 
 ## ✅ Phase 2: Fetchers — DONE
 - [x] twitter.py — twikit session management (login, cookie persistence to cookies.json)
@@ -52,37 +52,34 @@
 - [x] Per-request structured log line: url | content_type | has_value | score | duration_ms
 - [x] All error paths covered (fetch fail, credibility reject, value reject, Phase 3A fail, Notion fail)
 
-## ✅ Phase 7: Deployment — mostly done
-- [x] systemd/triage-bot.service unit file (created)
+## ✅ Phase 7: Deployment — DONE
+- [x] systemd/triage-bot.service unit file (fixed path: knowledge-source-triage-bot)
 - [x] README.md — project overview + Oracle Cloud setup instructions
 - [x] Playwright Chromium install documented in README + RUNBOOK
-- [ ] End-to-end smoke test on VPS (needs live .env)
+- [x] End-to-end smoke test on VPS ✅ live (GitHub → Claude → Notion → Telegram)
+- [x] All output in Czech ✅
 
 ---
 
-## DEV BREAKPOINT — 2026-03-02
+## LIVE STATE — 2026-03-07
 
-**Git state:** clean, all work committed on `main`
+**Server:** Oracle Cloud 130.61.130.58 — `triage-bot.service` active, auto-restart on failure
 
-**Last commit:** `feat(notion): database writer, project context cache, topic classification in prompts`
+**What works end-to-end (verified live):**
+- GitHub URLs → fetch repo + README → 3-phase Claude → Notion record + Telegram reply
+- Article URLs → httpx+BS4 → Playwright fallback → 3-phase Claude → Notion + Telegram
+- All Claude output in Czech (summaries, principles, use cases)
+- Notion "AI Sources" database auto-created on first run
+- Structured log line per URL: `url | type | has_value | score | duration_ms`
 
-**What works (code-complete, not yet live-tested):**
-- Project structure, config validation, .env.example
-- Telegram handler + formatter + asyncio queue
-- Notion writer (find-or-create DB + record creation)
-- Notion projects cache (24h TTL)
-- All 4 Claude prompts (incl. topic classification)
+**Known limitation — X.com / Twitter:**
+- Oracle Cloud datacenter IPs are blocked by X.com at network level
+- twikit login fails (Cloudflare), browser cookies also return 401
+- Bot gracefully reports fetch error for tweet URLs
+- Fix: residential proxy or Twitter API v2 (paid) — **not yet implemented**
 
-**What needs implementation next (Phase 2 first):**
-- twikit fetcher (twitter.py)
-- Playwright fallback (playwright.py)
-- Article scraper (article.py)
-- GitHub API fetcher (github.py)
-- Claude pipeline orchestration (pipeline.py)
+## ⏳ Remaining / Future Work
 
-**Manual prerequisites before any live testing:**
-1. Create Telegram bot via @BotFather
-2. Create Telegram group, add bot as admin
-3. Fill in .env (all tokens: Telegram, Anthropic, Notion, Twitter credentials)
-4. `pip install -r requirements.txt`
-5. `playwright install chromium`
+- [ ] X.com fetching — residential proxy or Twitter API v2
+- [ ] Unit tests for fetchers (mocked HTTP)
+- [ ] Unit tests for pipeline (mocked Claude responses)

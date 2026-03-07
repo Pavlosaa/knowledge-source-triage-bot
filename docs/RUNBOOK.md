@@ -2,7 +2,7 @@
 
 This document covers production deployment, systemd service management, logging, troubleshooting, and manual prerequisites for the AI Knowledge Source Triage Bot.
 
-**Last Updated:** 2026-03-02
+**Last Updated:** 2026-03-07
 
 ---
 
@@ -222,8 +222,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/home/ubuntu/ai-knowledge-source-triage
-ExecStart=/home/ubuntu/ai-knowledge-source-triage/.venv/bin/python main.py
+WorkingDirectory=/home/ubuntu/knowledge-source-triage-bot
+ExecStart=/home/ubuntu/knowledge-source-triage-bot/.venv/bin/python main.py
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -385,7 +385,7 @@ Common causes:
 | Error | Fix |
 |-------|-----|
 | `Module not found: bot` | Virtual environment path wrong in .service file. Check `ExecStart` path. |
-| `FileNotFoundError: /home/ubuntu/ai-knowledge-source-triage` | Working directory doesn't exist. Check `WorkingDirectory` in .service file. |
+| `FileNotFoundError: /home/ubuntu/knowledge-source-triage-bot` | Working directory doesn't exist. Check `WorkingDirectory` in .service file. |
 | `Missing required env var: TELEGRAM_BOT_TOKEN` | `.env` file missing or incomplete. Copy `.env.example` and fill in values. |
 
 ### Issue: Bot receives messages but doesn't respond
@@ -405,6 +405,16 @@ Common causes:
 
 ### Issue: X.com content not fetching
 
+**Known limitation:** Oracle Cloud datacenter IPs are blocked by X.com at the network level.
+Even with valid browser cookies, X.com returns 401/403. twikit login and cookie-based auth both fail from datacenter IPs.
+
+**Current workaround:** X.com URLs are silently handled — the bot attempts fetch, fails gracefully, and reports a fetch error in Telegram. GitHub and generic article URLs work fine.
+
+**Permanent fix options (future work):**
+- Route X.com requests through a residential proxy (e.g. Bright Data, Oxylabs)
+- Use official Twitter API v2 (requires paid tier)
+- Run X.com fetcher on a separate non-datacenter machine
+
 Check logs:
 ```bash
 sudo journalctl -u triage-bot | grep -i twitter
@@ -414,8 +424,8 @@ Common causes:
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `Login failed: incorrect credentials` | Wrong X.com username/password/email | Verify in `.env`. Use test account if possible. |
-| `Rate limited` | Account rate-limited by X.com | Wait 24 hours or use different account. |
+| `401 Unauthorized` or `Could not fetch content` | Oracle Cloud IP blocked by X.com | See Known Limitation above |
+| `Login failed: incorrect credentials` | Wrong X.com username/password/email | Verify in `.env`. |
 | `Invalid URL format` | URL not recognized as Twitter | Must start with `https://x.com/` or `https://twitter.com/` |
 
 ### Issue: Claude API errors
@@ -455,7 +465,7 @@ Common causes:
 ### Pull Latest Code
 
 ```bash
-cd /home/ubuntu/ai-knowledge-source-triage
+cd /home/ubuntu/knowledge-source-triage-bot
 git pull origin main
 ```
 
@@ -530,14 +540,14 @@ Columns:
 Your `.env` file contains secrets. Back it up securely:
 
 ```bash
-sudo cp /home/ubuntu/ai-knowledge-source-triage/.env ~/backup/.env.backup
+sudo cp /home/ubuntu/knowledge-source-triage-bot/.env ~/backup/.env.backup
 sudo chmod 600 ~/backup/.env.backup
 ```
 
 ### Restore from Backup
 
 ```bash
-sudo cp ~/backup/.env.backup /home/ubuntu/ai-knowledge-source-triage/.env
+sudo cp ~/backup/.env.backup /home/ubuntu/knowledge-source-triage-bot/.env
 sudo systemctl restart triage-bot
 ```
 
@@ -562,7 +572,7 @@ sudo systemctl restart triage-bot
 
 4. **Test configuration:**
    ```bash
-   cd /home/ubuntu/ai-knowledge-source-triage
+   cd /home/ubuntu/knowledge-source-triage-bot
    source .venv/bin/activate
    python -c "from bot.config import load_config; load_config()"
    ```
