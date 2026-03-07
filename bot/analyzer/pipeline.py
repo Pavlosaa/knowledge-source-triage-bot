@@ -169,7 +169,7 @@ async def run_pipeline(
             system=FULL_ANALYSIS_SYSTEM,
             user=phase3_user,
             model=_SONNET,
-            max_tokens=800,
+            max_tokens=2000,
             api_key=config.anthropic_api_key,
         )
     except Exception as exc:
