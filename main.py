@@ -1,6 +1,7 @@
 """Entry point. Wires config, queue, handlers, and starts the Telegram bot."""
 
 import asyncio
+import functools
 import sys
 
 from loguru import logger
@@ -10,6 +11,8 @@ from bot.config import load_config
 from bot.telegram.handler import MessageHandler, process_queue
 from bot.telegram.formatter import format_result
 from bot.analyzer.pipeline import run_pipeline
+from bot.notion.writer import NotionWriter
+from bot.notion.projects import ProjectsCache
 
 # --- Logging setup ---
 logger.remove()
@@ -21,6 +24,17 @@ logger.add("logs/errors.log", rotation="10 MB", retention="7 days", level="ERROR
 async def main() -> None:
     config = load_config()
     logger.info("Configuration loaded.")
+
+    writer = NotionWriter(
+        notion_api_key=config.notion_api_key,
+        rnd_page_id=config.notion_rnd_page_id,
+    )
+    projects = ProjectsCache(
+        notion_api_key=config.notion_api_key,
+        projects_page_id=config.notion_projects_page_id,
+    )
+
+    pipeline_fn = functools.partial(run_pipeline, config=config, writer=writer, projects=projects)
 
     queue: asyncio.Queue = asyncio.Queue()
     handler = MessageHandler(queue)
@@ -47,7 +61,7 @@ async def main() -> None:
         queue_task = asyncio.create_task(
             process_queue(
                 queue=queue,
-                pipeline_fn=run_pipeline,
+                pipeline_fn=pipeline_fn,
                 format_fn=format_result,
             )
         )

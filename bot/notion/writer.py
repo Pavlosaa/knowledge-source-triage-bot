@@ -134,12 +134,15 @@ class NotionWriter:
             "Discovery Score": {"number": result.discovery_score},
             "Source URL": {"url": source_url},
             "Author": {
-                "rich_text": [{"text": {"content": ""}}]  # populated by fetcher in future
+                "rich_text": [{"text": {"content": result.author or ""}}]
             },
             "Date Added": {
                 "date": {"start": datetime.now(timezone.utc).date().isoformat()}
             },
         }
+
+        if result.content_type and result.content_type in _CONTENT_TYPE_COLORS:
+            properties["Content Type"] = {"select": {"name": result.content_type}}
 
         if result.topic:
             properties["Topic"] = {"select": {"name": result.topic}}

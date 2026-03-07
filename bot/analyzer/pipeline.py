@@ -2,13 +2,56 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+import time
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
+
+import anthropic
+from loguru import logger
+
+from bot.analyzer.prompts import (
+    CREDIBILITY_SYSTEM,
+    FULL_ANALYSIS_SYSTEM,
+    REJECTION_SUMMARY_SYSTEM,
+    VALUE_ASSESSMENT_SYSTEM,
+)
+from bot.fetcher.article import ArticleContent
+from bot.fetcher.article import fetch_article as fetch_generic_article
+from bot.fetcher.github import RepoContent, extract_repo_coords, fetch_repo
+from bot.fetcher.twitter import (
+    TweetContent,
+    detect_content_type,
+    extract_tweet_id,
+    fetch_article as fetch_x_article,
+    fetch_tweet,
+)
+
+if TYPE_CHECKING:
+    from bot.config import Config
+    from bot.notion.projects import ProjectsCache
+    from bot.notion.writer import NotionWriter
+
+# Content truncation limits (chars) to control token costs
+_PHASE12_CONTENT_LIMIT = 3_000
+_PHASE3_CONTENT_LIMIT = 6_000
+
+# Credibility score below which we reject without further analysis
+_CREDIBILITY_REJECT_THRESHOLD = 2
+
+_HAIKU = "claude-haiku-4-5"
+_SONNET = "claude-sonnet-4-6"
 
 
 @dataclass
 class AnalysisResult:
     url: str
     has_value: bool
+
+    # Source metadata (from fetcher)
+    content_type: str | None = None
+    author: str | None = None
 
     # Populated when has_value = True
     title: str | None = None
@@ -32,7 +75,12 @@ class AnalysisResult:
     credibility_reason: str | None = None
 
 
-async def run_pipeline(url: str) -> AnalysisResult:
+async def run_pipeline(
+    url: str,
+    config: "Config",
+    writer: "NotionWriter",
+    projects: "ProjectsCache",
+) -> AnalysisResult:
     """
     Full analysis pipeline:
       1. Fetch content (twitter / playwright / github / article)
@@ -41,5 +89,243 @@ async def run_pipeline(url: str) -> AnalysisResult:
       4. Phase 3A/B: full analysis or rejection summary (Sonnet / Haiku)
       5. Create Notion page if has_value
     """
-    # TODO: implement fetching and analysis
-    raise NotImplementedError("Pipeline not yet implemented")
+    result = AnalysisResult(url=url, has_value=False)
+    _started_at = time.monotonic()
+
+    # --- 1. Fetch ---
+    try:
+        fetched, content_type, author = await _fetch(url, config)
+    except Exception as exc:
+        logger.error(f"Fetch failed for {url}: {exc}")
+        result.rejection_reason = f"Could not fetch content: {exc}"
+        _log_summary(result, url, _started_at)
+        return result
+
+    result.content_type = content_type
+    result.author = author
+    content_text = _build_content_text(fetched)
+
+    # --- 2. Phase 1: Credibility (Haiku) ---
+    try:
+        cred = await _call_claude(
+            system=CREDIBILITY_SYSTEM,
+            user=_credibility_prompt(url, content_text[:_PHASE12_CONTENT_LIMIT]),
+            model=_HAIKU,
+            max_tokens=150,
+            api_key=config.anthropic_api_key,
+        )
+        result.credibility_score = int(cred.get("credibility_score", 3))
+        result.credibility_reason = cred.get("credibility_reason")
+    except Exception as exc:
+        logger.warning(f"Phase 1 failed, continuing with neutral credibility: {exc}")
+        result.credibility_score = 3
+
+    if result.credibility_score < _CREDIBILITY_REJECT_THRESHOLD:
+        result.rejection_reason = f"Low credibility ({result.credibility_score}/5): {result.credibility_reason}"
+        _log_summary(result, url, _started_at)
+        return result
+
+    # --- 3. Phase 2: Value assessment (Haiku) ---
+    try:
+        value = await _call_claude(
+            system=VALUE_ASSESSMENT_SYSTEM,
+            user=content_text[:_PHASE12_CONTENT_LIMIT],
+            model=_HAIKU,
+            max_tokens=150,
+            api_key=config.anthropic_api_key,
+        )
+        has_value = bool(value.get("has_value", False))
+        phase2_rejection = value.get("rejection_reason")
+    except Exception as exc:
+        logger.warning(f"Phase 2 failed, assuming no value: {exc}")
+        has_value = False
+        phase2_rejection = "Analysis phase failed"
+
+    if not has_value:
+        # --- 4. Phase 3B: Rejection summary (Haiku) ---
+        try:
+            rejection = await _call_claude(
+                system=REJECTION_SUMMARY_SYSTEM,
+                user=content_text[:_PHASE12_CONTENT_LIMIT],
+                model=_HAIKU,
+                max_tokens=200,
+                api_key=config.anthropic_api_key,
+            )
+            result.brief_summary = rejection.get("brief_summary")
+            result.rejection_reason = rejection.get("rejection_reason") or phase2_rejection
+        except Exception as exc:
+            logger.warning(f"Phase 3B failed: {exc}")
+            result.rejection_reason = phase2_rejection
+
+        _log_summary(result, url, _started_at)
+        return result
+
+    # --- 5. Phase 3A: Full analysis (Sonnet) ---
+    project_context = await projects.get_context()
+    phase3_user = f"{content_text[:_PHASE3_CONTENT_LIMIT]}\n\n{project_context}"
+
+    try:
+        analysis = await _call_claude(
+            system=FULL_ANALYSIS_SYSTEM,
+            user=phase3_user,
+            model=_SONNET,
+            max_tokens=800,
+            api_key=config.anthropic_api_key,
+        )
+    except Exception as exc:
+        logger.error(f"Phase 3A failed for {url}: {exc}")
+        result.rejection_reason = f"Analysis failed: {exc}"
+        _log_summary(result, url, _started_at)
+        return result
+
+    result.has_value = True
+    result.title = analysis.get("title")
+    result.topic = analysis.get("topic")
+    result.core_summary = analysis.get("core_summary")
+    result.key_principles = analysis.get("key_principles") or []
+    result.use_cases = analysis.get("use_cases") or []
+    result.discovery_score = analysis.get("discovery_score")
+    result.tags = analysis.get("tags") or []
+    result.project_recommendations = analysis.get("project_recommendations") or []
+
+    # --- 6. Write to Notion ---
+    try:
+        result.notion_url = await writer.create_source_page(result, url)
+        logger.info(f"Notion record created: {result.notion_url}")
+    except Exception as exc:
+        logger.error(f"Notion write failed for {url}: {exc}")
+
+    _log_summary(result, url, _started_at)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Fetch routing
+# ---------------------------------------------------------------------------
+
+async def _fetch(
+    url: str,
+    config: "Config",
+) -> tuple[Any, str, str | None]:
+    """Route URL to the right fetcher. Returns (fetched_content, content_type_label, author)."""
+    # GitHub
+    coords = extract_repo_coords(url)
+    if coords:
+        owner, repo = coords
+        fetched = await fetch_repo(owner, repo, token=config.github_token)
+        author = owner
+        return fetched, "GitHub", author
+
+    # X.com
+    x_type = detect_content_type(url)
+    if x_type == "tweet":
+        tweet_id = extract_tweet_id(url)
+        fetched = await fetch_tweet(
+            tweet_id,
+            username=config.twitter_username,
+            email=config.twitter_email,
+            password=config.twitter_password,
+        )
+        author = f"@{fetched.author_username}"
+        return fetched, "Tweet", author
+
+    if x_type == "article":
+        fetched = await fetch_x_article(url)
+        return fetched, "X Article", fetched.author_name
+
+    # Generic article / web page
+    fetched = await fetch_generic_article(url)
+    return fetched, "Article", None
+
+
+# ---------------------------------------------------------------------------
+# Content normalization
+# ---------------------------------------------------------------------------
+
+def _build_content_text(fetched: Any) -> str:
+    if isinstance(fetched, TweetContent):
+        lines = [
+            f"Author: @{fetched.author_username} ({fetched.author_name})",
+            f"Followers: {fetched.follower_count:,}",
+            f"Verified: {fetched.is_verified}",
+            "",
+            fetched.text,
+        ]
+        if fetched.embedded_urls:
+            lines += ["", "Embedded URLs:"] + fetched.embedded_urls
+        return "\n".join(lines)
+
+    if isinstance(fetched, RepoContent):
+        lines = [
+            f"GitHub: {fetched.owner}/{fetched.repo}",
+            f"Stars: {fetched.stars:,}",
+            f"Language: {fetched.language or 'unknown'}",
+            f"Description: {fetched.description or 'none'}",
+            "",
+            "README:",
+            fetched.readme or "(no README)",
+        ]
+        return "\n".join(lines)
+
+    # ArticleContent or playwright PageContent
+    title = getattr(fetched, "title", None) or ""
+    body = getattr(fetched, "body", "")
+    return f"Title: {title}\n\n{body}" if title else body
+
+
+def _credibility_prompt(url: str, content_preview: str) -> str:
+    return f"URL: {url}\n\nContent preview:\n{content_preview}"
+
+
+# ---------------------------------------------------------------------------
+# Claude call with retry
+# ---------------------------------------------------------------------------
+
+def _log_summary(result: AnalysisResult, url: str, started_at: float) -> None:
+    """Emit a single structured log line per processed URL."""
+    duration_ms = int((time.monotonic() - started_at) * 1000)
+    logger.info(
+        "pipeline_done | url={url} | type={content_type} | has_value={has_value} "
+        "| score={score} | duration_ms={duration_ms}",
+        url=url,
+        content_type=result.content_type or "unknown",
+        has_value=result.has_value,
+        score=result.discovery_score,
+        duration_ms=duration_ms,
+    )
+
+
+async def _call_claude(
+    system: str,
+    user: str,
+    model: str,
+    max_tokens: int,
+    api_key: str,
+    max_attempts: int = 3,
+) -> dict:
+    """Call Claude with exponential backoff retry. Returns parsed JSON dict."""
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    last_exc: Exception | None = None
+
+    for attempt in range(max_attempts):
+        try:
+            response = await client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                system=system,
+                messages=[{"role": "user", "content": user}],
+            )
+            text = response.content[0].text.strip()
+            return json.loads(text)
+        except json.JSONDecodeError as exc:
+            logger.warning(f"Claude returned invalid JSON (attempt {attempt + 1}): {exc}")
+            last_exc = exc
+        except anthropic.APIError as exc:
+            logger.warning(f"Claude API error (attempt {attempt + 1}): {exc}")
+            last_exc = exc
+
+        if attempt < max_attempts - 1:
+            delay = 2 ** (attempt + 1)
+            await asyncio.sleep(delay)
+
+    raise RuntimeError(f"Claude call failed after {max_attempts} attempts") from last_exc

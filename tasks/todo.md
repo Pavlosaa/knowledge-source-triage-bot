@@ -24,33 +24,33 @@
 - [x] prompts.py — topic classification added to Phase 3A (6 predefined categories)
 - [ ] Integration test against live Notion (needs API token)
 
-## 🔲 Phase 2: Fetchers — NEXT
-- [ ] twitter.py — twikit session management (login, cookie persistence to cookies.json)
-- [ ] twitter.py — fetch_tweet(tweet_id): text, author, follower count, verified
-- [ ] twitter.py — detect_content_type(url): tweet vs X Article
-- [ ] twitter.py — fetch_article(url): twikit attempt → Playwright fallback
-- [ ] playwright.py — headless Chromium setup + fetch_with_playwright(url)
-- [ ] article.py — httpx + BS4 generic HTML scraper → Playwright fallback
-- [ ] github.py — GitHub REST API: README, stars, description, language
+## ✅ Phase 2: Fetchers — DONE
+- [x] twitter.py — twikit session management (login, cookie persistence to cookies.json)
+- [x] twitter.py — fetch_tweet(tweet_id): text, author, follower count, verified
+- [x] twitter.py — detect_content_type(url): tweet vs X Article
+- [x] twitter.py — fetch_article(url): Playwright fallback (twikit doesn't support X Articles)
+- [x] playwright.py — headless Chromium setup + fetch_with_playwright(url)
+- [x] article.py — httpx + BS4 generic HTML scraper → Playwright fallback
+- [x] github.py — GitHub REST API: README, stars, description, language
 - [ ] Unit tests for each fetcher (mock HTTP responses)
 
-## 🔲 Phase 3: Claude Analyzer
+## ✅ Phase 3: Claude Analyzer — DONE
 - [x] prompts.py — all 4 prompts defined (credibility, value, full analysis, rejection)
-- [ ] pipeline.py — orchestrate 3-phase Claude calls (Haiku → Haiku → Sonnet/Haiku)
-- [ ] pipeline.py — JSON response parsing + validation
-- [ ] pipeline.py — exponential backoff retry logic (max 3, 2^n seconds)
+- [x] pipeline.py — orchestrate 3-phase Claude calls (Haiku → Haiku → Sonnet/Haiku)
+- [x] pipeline.py — JSON response parsing + validation
+- [x] pipeline.py — exponential backoff retry logic (max 3, 2^n seconds)
 - [ ] Unit tests for pipeline with mocked Claude responses
 
-## 🔲 Phase 5: Wire Everything Together
-- [ ] pipeline.py — integrate fetchers + Claude + Notion into run_pipeline()
-- [ ] main.py — pass NotionWriter + ProjectsCache into pipeline at startup
+## ✅ Phase 5: Wire Everything Together — DONE
+- [x] pipeline.py — integrate fetchers + Claude + Notion into run_pipeline()
+- [x] main.py — NotionWriter + ProjectsCache instantiated at startup via functools.partial
 - [ ] End-to-end local test with real URL
 
-## 🔲 Phase 6: Error Handling & Logging
+## ✅ Phase 6: Error Handling & Logging — DONE
 - [x] config.py — env var validation (done in Phase 0)
-- [ ] Loguru setup: bot.log + errors.log with rotation (stubs in main.py, needs wiring)
-- [ ] Per-request structured log line: timestamp | url | content_type | has_value | score | duration_ms
-- [ ] All error paths covered (never silent failure)
+- [x] Loguru setup: bot.log + errors.log with rotation (main.py)
+- [x] Per-request structured log line: url | content_type | has_value | score | duration_ms
+- [x] All error paths covered (fetch fail, credibility reject, value reject, Phase 3A fail, Notion fail)
 
 ## 🔲 Phase 7: Deployment
 - [x] systemd/triage-bot.service unit file (created)
