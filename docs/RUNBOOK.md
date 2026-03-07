@@ -518,7 +518,7 @@ ubuntu  12345  0.5  2.1  234000  45000 ?  Sl  14:30  0:15 /home/ubuntu/.../.venv
 
 Columns:
 - `%CPU` — CPU usage (0.5% = good)
-- `%MEM` — Memory usage (2.1% of 24GB = ~500MB, acceptable)
+- `%MEM` — Memory usage (2.1% of 12GB = ~250MB, acceptable)
 - `RSS` — Resident set (45MB, good)
 
 ---

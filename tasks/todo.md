@@ -52,11 +52,11 @@
 - [x] Per-request structured log line: url | content_type | has_value | score | duration_ms
 - [x] All error paths covered (fetch fail, credibility reject, value reject, Phase 3A fail, Notion fail)
 
-## 🔲 Phase 7: Deployment
+## ✅ Phase 7: Deployment — mostly done
 - [x] systemd/triage-bot.service unit file (created)
-- [ ] README — Oracle Cloud setup instructions
-- [ ] Playwright Chromium install on VPS: `playwright install chromium`
-- [ ] End-to-end smoke test on VPS
+- [x] README.md — project overview + Oracle Cloud setup instructions
+- [x] Playwright Chromium install documented in README + RUNBOOK
+- [ ] End-to-end smoke test on VPS (needs live .env)
 
 ---
 
