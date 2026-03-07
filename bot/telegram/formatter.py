@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -71,9 +72,10 @@ def _format_rejected(result: "AnalysisResult", original_url: str) -> str:
 
     if result.brief_summary:
         lines.append("")
-        lines.append(f"💭 <b>Shrnutí:</b> {result.brief_summary}")
+        lines.append(f"💭 <b>Shrnutí:</b> {html.escape(result.brief_summary)}")
 
     if result.rejection_reason:
-        lines.append(f"🚫 <b>Proč:</b> {result.rejection_reason}")
+        reason = html.escape(result.rejection_reason[:300])
+        lines.append(f"🚫 <b>Proč:</b> {reason}")
 
     return "\n".join(lines)
