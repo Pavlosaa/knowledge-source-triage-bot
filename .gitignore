@@ -1,6 +1,7 @@
 # Secrets
 .env
 cookies.json
+docs/vault/
 
 # Python
 __pycache__/
