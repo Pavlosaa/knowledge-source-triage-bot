@@ -40,7 +40,7 @@ _PHASE3_CONTENT_LIMIT = 6_000
 # Credibility score below which we reject without further analysis
 _CREDIBILITY_REJECT_THRESHOLD = 2
 
-_HAIKU = "claude-haiku-4-5"
+_HAIKU = "claude-haiku-4-5-20251001"
 _SONNET = "claude-sonnet-4-6"
 
 
