@@ -83,11 +83,13 @@ async def _get_client(username: str, email: str, password: str) -> Client:
 
 async def fetch_tweet(
     tweet_id: str,
-    username: str,
-    email: str,
-    password: str,
+    username: str | None,
+    email: str | None,
+    password: str | None,
 ) -> TweetContent:
     """Fetch tweet content via twikit."""
+    if not (username and email and password):
+        raise RuntimeError("Twitter credentials not configured — set TWITTER_USERNAME, TWITTER_PASSWORD, TWITTER_EMAIL")
     client = await _get_client(username, email, password)
     tweet = await client.get_tweet_by_id(tweet_id)
 

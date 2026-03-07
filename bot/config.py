@@ -15,10 +15,10 @@ class Config:
     telegram_bot_token: str
     telegram_group_id: int
 
-    # X.com
-    twitter_username: str
-    twitter_password: str
-    twitter_email: str
+    # X.com (optional — tweet fetching disabled if not set)
+    twitter_username: str | None
+    twitter_password: str | None
+    twitter_email: str | None
 
     # Claude
     anthropic_api_key: str
@@ -48,9 +48,9 @@ def load_config() -> Config:
 
     telegram_bot_token = require("TELEGRAM_BOT_TOKEN")
     telegram_group_id_raw = require("TELEGRAM_GROUP_ID")
-    twitter_username = require("TWITTER_USERNAME")
-    twitter_password = require("TWITTER_PASSWORD")
-    twitter_email = require("TWITTER_EMAIL")
+    twitter_username = optional("TWITTER_USERNAME")
+    twitter_password = optional("TWITTER_PASSWORD")
+    twitter_email = optional("TWITTER_EMAIL")
     anthropic_api_key = require("ANTHROPIC_API_KEY")
     notion_api_key = require("NOTION_API_KEY")
     notion_rnd_page_id = require("NOTION_RND_PAGE_ID")
