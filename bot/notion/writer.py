@@ -172,20 +172,20 @@ class NotionWriter:
 
         if result.core_summary:
             blocks += [
-                self._heading2("📌 Core Summary"),
+                self._heading2("📌 Shrnutí"),
                 self._paragraph(result.core_summary),
             ]
 
         if result.key_principles:
-            blocks.append(self._heading2("🔑 Key Principles"))
+            blocks.append(self._heading2("🔑 Klíčové poznatky"))
             blocks += [self._bullet(p) for p in result.key_principles]
 
         if result.use_cases:
-            blocks.append(self._heading2("💡 Use Cases"))
+            blocks.append(self._heading2("💡 Využití"))
             blocks += [self._bullet(u) for u in result.use_cases]
 
         if result.project_recommendations:
-            blocks.append(self._heading2("🎯 Relevance for Projects"))
+            blocks.append(self._heading2("🎯 Relevance pro projekty"))
             for rec in result.project_recommendations:
                 toggle_text = f"{rec['project_name']} — {rec['relevance'].upper()}"
                 blocks.append(
@@ -193,7 +193,7 @@ class NotionWriter:
                 )
 
         blocks += [
-            self._heading2("🔗 Source"),
+            self._heading2("🔗 Zdroj"),
             self._bookmark(source_url),
         ]
 

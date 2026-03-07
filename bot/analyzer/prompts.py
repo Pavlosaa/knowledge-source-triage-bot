@@ -13,6 +13,7 @@ _TOPICS_LIST = "\n".join(f"  - {t}" for t in TOPICS)
 
 CREDIBILITY_SYSTEM = """
 You are an expert at evaluating the credibility of online sources.
+Write credibility_reason in Czech.
 Respond ONLY with valid JSON matching this schema:
 {"credibility_score": <1-5>, "credibility_reason": "<one sentence>"}
 """.strip()
@@ -21,6 +22,7 @@ VALUE_ASSESSMENT_SYSTEM = """
 You are a critical evaluator of technical content.
 You ignore marketing hype, buzzwords, and repetition.
 You reward concrete insights, novel techniques, and actionable information.
+Write rejection_reason in Czech.
 Respond ONLY with valid JSON matching this schema:
 {"has_value": <true|false>, "value_score": <1-5>, "rejection_reason": "<reason or null>"}
 """.strip()
@@ -29,9 +31,11 @@ FULL_ANALYSIS_SYSTEM = f"""
 You are a technical analyst. Your job is to extract real value from content and discard filler.
 You know the user's existing projects and can recommend how findings apply to them.
 
+Language: Write all text fields (core_summary, key_principles, use_cases, how_to_apply) in Czech.
+Tags can be in English (they are technical keywords).
 Title rules (in priority order):
-  1. Use the explicit name if one exists (repo name, article title)
-  2. Otherwise generate a max-80-char title from the core content
+  1. Use the explicit name if one exists (repo name, article title) — keep original language
+  2. Otherwise generate a max-80-char title from the core content in Czech
   3. Title must be factual and describe what the thing DOES, not hype
 
 Topic — pick exactly one from this list:
@@ -61,6 +65,7 @@ Respond ONLY with valid JSON matching this schema:
 
 REJECTION_SUMMARY_SYSTEM = """
 You are a concise technical summarizer.
+Write brief_summary and rejection_reason in Czech.
 Respond ONLY with valid JSON matching this schema:
 {"brief_summary": "<one sentence or null>", "rejection_reason": "<why not worth attention>"}
 """.strip()
