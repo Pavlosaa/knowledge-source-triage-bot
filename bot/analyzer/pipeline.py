@@ -281,6 +281,16 @@ def _credibility_prompt(url: str, content_preview: str) -> str:
 # Claude call with retry
 # ---------------------------------------------------------------------------
 
+def _strip_markdown_json(text: str) -> str:
+    """Remove ```json ... ``` or ``` ... ``` wrappers if present."""
+    if text.startswith("```"):
+        lines = text.splitlines()
+        # Remove first line (```json or ```) and last line (```)
+        inner = lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
+        return "\n".join(inner).strip()
+    return text
+
+
 def _log_summary(result: AnalysisResult, url: str, started_at: float) -> None:
     """Emit a single structured log line per processed URL."""
     duration_ms = int((time.monotonic() - started_at) * 1000)
@@ -316,6 +326,7 @@ async def _call_claude(
                 messages=[{"role": "user", "content": user}],
             )
             text = response.content[0].text.strip()
+            text = _strip_markdown_json(text)
             return json.loads(text)
         except json.JSONDecodeError as exc:
             logger.warning(f"Claude returned invalid JSON (attempt {attempt + 1}): {exc}")
