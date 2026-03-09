@@ -67,12 +67,18 @@ class AnalysisResult:
     brief_summary: str | None = None
     rejection_reason: str | None = None
 
-    # Topic classification (Notion category)
-    topic: str | None = None
+    # Topic classification (Notion categories, 1-3)
+    topics: list[str] = field(default_factory=list)
+
+    # Concrete real-world usage example
+    real_world_example: str | None = None
 
     # Credibility
     credibility_score: int | None = None
     credibility_reason: str | None = None
+
+    # Dedup: set when URL already exists in Notion
+    duplicate_of: dict | None = None
 
 
 async def run_pipeline(
@@ -91,6 +97,14 @@ async def run_pipeline(
     """
     result = AnalysisResult(url=url, has_value=False)
     _started_at = time.monotonic()
+
+    # --- 0. Dedup check ---
+    existing = await writer.find_existing(url)
+    if existing:
+        logger.info(f"Duplicate URL skipped: {url} → {existing['url']}")
+        result.duplicate_of = existing
+        _log_summary(result, url, _started_at)
+        return result
 
     # --- 1. Fetch ---
     try:
@@ -180,10 +194,16 @@ async def run_pipeline(
 
     result.has_value = True
     result.title = analysis.get("title")
-    result.topic = analysis.get("topic")
+    # Support both "topics" (list) and legacy "topic" (string)
+    raw_topics = analysis.get("topics") or []
+    if not raw_topics:
+        legacy = analysis.get("topic")
+        raw_topics = [legacy] if legacy else []
+    result.topics = raw_topics
     result.core_summary = analysis.get("core_summary")
     result.key_principles = analysis.get("key_principles") or []
     result.use_cases = analysis.get("use_cases") or []
+    result.real_world_example = analysis.get("real_world_example")
     result.discovery_score = analysis.get("discovery_score")
     result.tags = analysis.get("tags") or []
     result.project_recommendations = analysis.get("project_recommendations") or []

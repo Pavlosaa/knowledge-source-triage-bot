@@ -17,9 +17,25 @@ def _stars(score: int) -> str:
 
 def format_result(result: "AnalysisResult", original_url: str) -> str:
     """Render an AnalysisResult as an HTML-formatted Telegram message."""
+    if result.duplicate_of:
+        return _format_duplicate(result, original_url)
     if result.has_value:
         return _format_valuable(result, original_url)
     return _format_rejected(result, original_url)
+
+
+def _format_duplicate(result: "AnalysisResult", original_url: str) -> str:
+    dup = result.duplicate_of
+    lines: list[str] = [
+        f"🔗 <a href=\"{original_url}\">Původní zdroj</a>",
+        "",
+        "🔄 <b>Už zpracováno</b>",
+    ]
+    if dup.get("date"):
+        lines.append(f"📅 Přidáno: {dup['date']}")
+    if dup.get("url"):
+        lines.append(f"📖 <a href=\"{dup['url']}\">Otevřít v Notion →</a>")
+    return "\n".join(lines)
 
 
 def _format_valuable(result: "AnalysisResult", original_url: str) -> str:

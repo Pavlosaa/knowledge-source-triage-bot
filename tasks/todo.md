@@ -80,6 +80,25 @@
 
 ## ⏳ Remaining / Future Work
 
-- [ ] X.com fetching — residential proxy or Twitter API v2
-- [ ] Unit tests for fetchers (mocked HTTP)
-- [ ] Unit tests for pipeline (mocked Claude responses)
+### Nové funkce (backlog 2026-03-09)
+
+- [ ] **Dedup check** — před spuštěním pipeline zkontrolovat Notion DB, zda URL (nebo kanonická forma repo URL) již existuje. Pokud ano: přeskočit analýzu, odpovědět odkazem na existující Notion record + datum prvního zpracování.
+- [ ] **Real-world příklad v Notion** — Phase 3A prompt rozšířit o sekci `real_world_example` (1-3 krátké odstavce popisující konkrétní reálné použití). Přidat jako nový toggle blok v Notion (za "Využití").
+- [ ] **Topic jako multiselect** — změnit Notion property `Topic` z `select` na `multi_select`. Upravit Phase 3A prompt, aby vracel seznam témat (1-3). Upravit writer.py pro multi_select formát.
+- [ ] **Lepší Title** — generovat lidsky čitelný, unikátní, popisný ale stručný název záznamu. Vzory špatných názvů z praxe:
+  - `agency-agents`, `build-your-own-x` — surový repo slug bez kontextu (ZAKÁZÁNO)
+  - `karpathy/autoresearch` — owner/repo formát (ZAKÁZÁNO)
+  - `PM Skills Marketplace: 65+ PM skills a workflows pro Claude Code/Cowork` — příliš dlouhý, marketingový tón (ZAKÁZÁNO)
+  - `Frontend Slides – Claude Code skill pro HTML prezentace` — SPRÁVNÝ vzor
+  Nová pravidla pro prompt (priorita: styl > délka):
+  - NIKDY surový repo slug ani owner/repo formát
+  - NIKDY marketingový tón: žádná čísla ("65+"), žádné superlativy, žádné "Marketplace/Platform/Suite"
+  - Popisovat CO věc dělá, ne jak se jmenuje nebo kolik toho má
+  - Formát: "Název – co dělá" (pokud existuje lidský název), nebo čistě popisná věta v češtině
+  - Max 70 znaků, ale styl důležitější než délka
+
+### Infrastruktura / testy
+
+- [ ] **X.com fetching via ScrapFly** — zvolená možnost: ScrapFly (robustnější anti-bot bypass, ASP mode, JS rendering). Free tier 1000 req/měsíc stačí pro casual use, pak $19/měsíc. Implementace: nahradit twikit v `twitter.py` ScrapFly HTTP klientem, přidat `SCRAPFLY_KEY` jako optional env var do config.py + .env.example. Fallback bez klíče: graceful error (stejné jako teď). twikit odebrat úplně (Oracle Cloud IPs blokované tak jako tak). SDK: `pip install scrapfly-sdk`.
+- [ ] Unit tests pro fetchers (mocked HTTP)
+- [ ] Unit tests pro pipeline (mocked Claude responses)
