@@ -5,7 +5,7 @@
 **Project:** AI Knowledge Source Triage Bot
 **Type:** Python 3.12 async application
 **Entry Point:** `/bot/main.py`
-**Updated:** 2026-03-02
+**Updated:** 2026-03-11
 
 ---
 
@@ -257,9 +257,10 @@ logger.add("logs/errors.log", rotation="10 MB", retention="7 days", level="ERROR
 ## Deployment
 
 **Service:** `/systemd/triage-bot.service`
-**Host:** Oracle Cloud Free Forever (ARM, 24GB RAM)
-**OS:** Oracle Linux
+**Host:** Oracle Cloud Free Forever — VM.Standard.E5.Flex (AMD x86), 1 OCPU, 12GB RAM
+**OS:** Ubuntu
 **Python:** 3.12
+**CI/CD:** GitHub Actions (lint, typecheck, test, security) → auto-deploy via SSH
 
 Systemd unit manages:
 - Auto-restart on failure

@@ -1,4 +1,4 @@
-<!-- Generated: 2026-03-02 -->
+<!-- Generated: 2026-03-02 | Updated: 2026-03-11 -->
 
 # AI Knowledge Source Triage Bot — Codebase Overview
 
@@ -51,20 +51,21 @@ Python packages, external service integrations (Telegram, Claude, Notion, X.com,
 | **Telegram Formatter** | DONE | HTML formatting for valuable + rejected sources |
 | **Notion Writer** | DONE | DB creation, record creation with properties + body blocks |
 | **Project Context Cache** | DONE | Async-safe cache, 24h TTL, Notion page description fetching |
-| **Fetcher (Twitter)** | TODO | twikit session + tweet/article fetch |
-| **Fetcher (Article)** | TODO | httpx + BS4 with Playwright fallback |
-| **Fetcher (GitHub)** | TODO | REST API calls to get metadata + README |
-| **Fetcher (Playwright)** | TODO | Headless Chromium for JS-rendered pages |
-| **Analysis Pipeline** | TODO | Orchestrate 4 phases, call Claude, create Notion pages |
+| **Fetcher (Twitter)** | DONE | twikit session + tweet/article fetch (blocked by Oracle Cloud IP) |
+| **Fetcher (Article)** | DONE | httpx + BS4 with Playwright fallback |
+| **Fetcher (GitHub)** | DONE | REST API: metadata + README |
+| **Fetcher (Playwright)** | DONE | Headless Chromium for JS-rendered pages |
+| **Analysis Pipeline** | DONE | 3-phase orchestration (Haiku×2 → Sonnet), retry, JSON extraction |
+| **CI/CD Pipeline** | DONE | GitHub Actions: lint, typecheck, test, security + auto-deploy |
 
-**Current blocker:** Pipeline orchestration not yet implemented. Once fetchers and pipeline are done, bot is ready to deploy.
+**Bot is LIVE** on Oracle Cloud since 2026-03-07. GitHub and article URLs work end-to-end. X.com URLs blocked at network level (Oracle Cloud IPs).
 
 ---
 
 ## Directory Structure
 
 ```
-ai-knowledge-source-triage/
+knowledge-source-triage-bot/
 ├── bot/                          # Main application
 │   ├── config.py                 # Config loading + validation
 │   ├── telegram/
@@ -76,13 +77,20 @@ ai-knowledge-source-triage/
 │   │   ├── github.py             # GitHub repos (REST API)
 │   │   └── playwright.py         # Headless browser fallback
 │   ├── analyzer/
-│   │   ├── pipeline.py           # 4-phase analysis orchestration
+│   │   ├── pipeline.py           # 3-phase analysis orchestration
 │   │   └── prompts.py            # All Claude system prompts
 │   └── notion/
 │       ├── writer.py             # Notion page creation
 │       └── projects.py           # Project context cache
+├── tests/                         # pytest test suite
+│   ├── __init__.py
+│   └── conftest.py               # Shared fixtures
+├── .github/workflows/             # CI/CD
+│   ├── ci.yml                    # lint, typecheck, test, security
+│   └── deploy.yml                # Auto-deploy to Oracle Cloud
 ├── main.py                        # Entry point
-├── requirements.txt               # Python dependencies
+├── pyproject.toml                 # ruff, mypy, pytest config
+├── requirements.txt               # Python dependencies (prod + dev)
 ├── .env.example                   # Env var template
 ├── docs/
 │   ├── plans/
@@ -94,8 +102,8 @@ ai-knowledge-source-triage/
 │       ├── data.md               # Data structures + prompts
 │       └── dependencies.md       # External services
 ├── tasks/
-│   ├── todo.md                   # Task backlog (DEV BREAKPOINT)
-│   └── lessons.md                # Lessons learned (empty)
+│   ├── todo.md                   # Task backlog
+│   └── lessons.md                # Lessons learned
 └── systemd/
     └── triage-bot.service        # systemd unit file
 ```
@@ -104,20 +112,24 @@ ai-knowledge-source-triage/
 
 ## Key Files to Know
 
-| File | Purpose | Lines | Status |
-|------|---------|-------|--------|
-| main.py | Entry point, wiring, Telegram app setup | 69 | ✅ |
-| bot/config.py | Load + validate env vars | 82 | ✅ |
-| bot/telegram/handler.py | Message reception, URL extraction, queue | 98 | ✅ |
-| bot/telegram/formatter.py | Result → Telegram HTML | 80 | ✅ |
-| bot/analyzer/pipeline.py | 4-phase analysis (NOT YET) | 46 | ❌ |
-| bot/analyzer/prompts.py | All Claude system prompts | 67 | ✅ |
-| bot/fetcher/twitter.py | X.com fetch (NOT YET) | 58 | ❌ |
-| bot/fetcher/article.py | Generic article fetch (NOT YET) | 22 | ❌ |
-| bot/fetcher/github.py | GitHub repo fetch (NOT YET) | 34 | ❌ |
-| bot/fetcher/playwright.py | Headless browser (NOT YET) | 22 | ❌ |
-| bot/notion/writer.py | Notion page creation | 225 | ✅ |
-| bot/notion/projects.py | Project context cache | 88 | ✅ |
+| File | Purpose | Status |
+|------|---------|--------|
+| main.py | Entry point, wiring, Telegram app setup | ✅ |
+| bot/config.py | Load + validate env vars | ✅ |
+| bot/telegram/handler.py | Message reception, URL extraction, queue | ✅ |
+| bot/telegram/formatter.py | Result → Telegram HTML | ✅ |
+| bot/analyzer/pipeline.py | 3-phase analysis orchestration | ✅ |
+| bot/analyzer/prompts.py | All Claude system prompts | ✅ |
+| bot/fetcher/twitter.py | X.com fetch (twikit) | ✅ |
+| bot/fetcher/article.py | Generic article (httpx+BS4) | ✅ |
+| bot/fetcher/github.py | GitHub repo (REST API) | ✅ |
+| bot/fetcher/playwright.py | Headless browser fallback | ✅ |
+| bot/notion/writer.py | Notion page creation | ✅ |
+| bot/notion/projects.py | Project context cache | ✅ |
+| pyproject.toml | ruff, mypy, pytest config | ✅ |
+| .github/workflows/ci.yml | CI pipeline (lint, typecheck, test, security) | ✅ |
+| .github/workflows/deploy.yml | Auto-deploy to Oracle Cloud | ✅ |
+| tests/conftest.py | Shared test fixtures | ✅ |
 
 ---
 
@@ -212,11 +224,16 @@ Telegram Reply
 
 ---
 
-## Testing Strategy (TODO)
+## Testing & CI
 
-- Unit tests for: config loading, URL extraction, formatter
+**CI Pipeline (GitHub Actions):** lint (ruff) → typecheck (mypy) → test (pytest) → security (pip-audit + TruffleHog)
+
+**Test infrastructure:** `tests/conftest.py` with shared fixtures (mock env vars).
+
+**Remaining test work:**
+- Unit tests for: fetchers (mocked HTTP), pipeline (mocked Claude responses)
 - Integration tests for: Notion writer, project context cache
-- E2E tests (post-implementation): full pipeline with mock Claude API
+- E2E tests: full pipeline with mock Claude API
 
 ---
 
@@ -240,11 +257,10 @@ Telegram Reply
 
 ## Documentation Freshness
 
-- **Generated:** 2026-03-02
-- **Source files scanned:** 17 (all Python modules)
-- **Architecture matches:** Yes (verified against code)
+- **Generated:** 2026-03-02, **Updated:** 2026-03-11
+- **Architecture matches:** Yes (verified against live deployment)
 - **All file paths verified:** Yes
-- **Next update:** When major feature complete (fetchers, pipeline)
+- **Next update:** When X.com fetching or tests are implemented
 
 ---
 

@@ -2,7 +2,7 @@
 
 This document covers local development setup, running the bot, testing procedures, and code style.
 
-**Last Updated:** 2026-03-02
+**Last Updated:** 2026-03-11
 
 ---
 
@@ -50,8 +50,8 @@ Download from https://www.python.org/downloads/ (Python 3.12+)
 
 ```bash
 cd /path/to/projects
-git clone https://github.com/yourusername/ai-knowledge-source-triage.git
-cd ai-knowledge-source-triage
+git clone https://github.com/Pavlosaa/knowledge-source-triage-bot.git
+cd knowledge-source-triage-bot
 ```
 
 ### 2. Create a Virtual Environment
@@ -244,22 +244,22 @@ Before committing, verify:
    - Should create a Notion page in "AI Sources" database
    - Should reply with a summary and Notion link
 
-### Automated Testing (TODO)
-
-Once the full pipeline is implemented, add tests:
+### Automated Testing
 
 ```bash
-# Unit tests (config, formatter, URL extraction)
-pytest bot/tests/unit/ -v
+# Run all tests
+pytest
 
-# Integration tests (Notion writer, context cache)
-pytest bot/tests/integration/ -v
+# With coverage report
+pytest --cov=bot --cov-report=term-missing
 
-# E2E tests (full pipeline)
-pytest bot/tests/e2e/ -v
+# Run specific test file
+pytest tests/test_config.py -v
 ```
 
-Current coverage goal: **80%+**
+Coverage goal: **80%+**
+
+Test fixtures are in `tests/conftest.py` (mock env vars, etc.).
 
 ### Debugging
 
@@ -308,20 +308,28 @@ Use conventional commit format: `type(scope): description`
 
 Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`
 
-### 5. Push and Create a PR
+### 5. Verify Locally
+
+Before pushing, run the CI checks locally:
+
+```bash
+ruff check . && ruff format --check . && mypy bot/ && pytest --cov=bot
+```
+
+### 6. Push and Create a PR
 
 ```bash
 git push origin feat/your-feature-name
 ```
 
-Then create a pull request on GitHub.
+Then create a pull request on GitHub. CI pipeline (lint, typecheck, test, security) must pass before merging.
 
 ---
 
 ## Project Structure Reference
 
 ```
-ai-knowledge-source-triage/
+knowledge-source-triage-bot/
 ├── bot/                          # Main application
 │   ├── __init__.py
 │   ├── config.py                 # Configuration loading + validation
@@ -334,13 +342,20 @@ ai-knowledge-source-triage/
 │   │   ├── github.py             # GitHub repos (REST API)
 │   │   └── playwright.py         # Headless browser fallback
 │   ├── analyzer/
-│   │   ├── pipeline.py           # 4-phase analysis orchestration
+│   │   ├── pipeline.py           # 3-phase analysis orchestration
 │   │   └── prompts.py            # All Claude system prompts
 │   └── notion/
 │       ├── writer.py             # Notion page creation
 │       └── projects.py           # Project context cache
+├── tests/                         # pytest test suite
+│   ├── __init__.py
+│   └── conftest.py               # Shared fixtures (mock env, etc.)
+├── .github/workflows/             # CI/CD pipelines
+│   ├── ci.yml                    # lint, typecheck, test, security
+│   └── deploy.yml                # Auto-deploy to Oracle Cloud
 ├── main.py                        # Entry point
-├── requirements.txt               # Python dependencies
+├── pyproject.toml                 # ruff, mypy, pytest config
+├── requirements.txt               # Python dependencies (prod + dev)
 ├── .env.example                   # Env var template
 ├── .env                           # (local, not committed)
 ├── logs/
@@ -388,12 +403,23 @@ tail -f logs/bot.log
 # Clear old logs
 rm logs/*.log
 
-# Check code style (if linters added)
-# pylint bot/
-# black --check bot/
+# Lint (check for issues)
+ruff check .
 
-# Run tests (when available)
-# pytest -v
+# Auto-fix lint issues
+ruff check --fix .
+
+# Format code
+ruff format .
+
+# Type check
+mypy bot/
+
+# Run tests
+pytest --cov=bot
+
+# Dependency vulnerability scan
+pip-audit
 ```
 
 ---

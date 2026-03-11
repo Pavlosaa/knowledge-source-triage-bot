@@ -26,6 +26,21 @@ Personal Telegram bot that triages AI-related links shared in a group chat. Anal
 
 Python 3.12 | python-telegram-bot v21 | twikit | Playwright | httpx + BeautifulSoup4 | anthropic | notion-client | loguru
 
+## CI/CD
+
+GitHub Actions pipeline runs on every push/PR to `main`:
+
+| Job | Tool | What it checks |
+|-----|------|----------------|
+| **lint** | ruff | Code style + import sorting |
+| **typecheck** | mypy | Static type analysis |
+| **test** | pytest | Unit tests with coverage |
+| **security** | pip-audit + TruffleHog | CVE scanning + secret detection |
+
+Auto-deploy to Oracle Cloud on successful CI (requires GitHub Secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`).
+
+Branch protection on `main`: PR required, all CI checks must pass, no force push.
+
 ## Quick start
 
 ### Prerequisites
@@ -87,6 +102,9 @@ bot/
   telegram/       # Message handler + formatter
   config.py       # Env var loading with fail-fast validation
 main.py           # Entry point
+tests/            # pytest test suite + fixtures
+.github/workflows/ # CI (lint, typecheck, test, security) + deploy
+pyproject.toml    # ruff, mypy, pytest config
 systemd/          # triage-bot.service unit file
 docs/             # Design doc, runbook, codemaps
 tasks/            # todo.md, lessons.md
@@ -113,5 +131,6 @@ pipeline_done | url=... | type=Tweet | has_value=True | score=4 | duration_ms=84
 
 - [docs/RUNBOOK.md](docs/RUNBOOK.md) — deployment, operations, troubleshooting
 - [docs/ENV.md](docs/ENV.md) — environment variables reference
+- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — local development, code style, testing
 - [docs/CODEMAPS/INDEX.md](docs/CODEMAPS/INDEX.md) — codebase navigation
 - [docs/plans/2026-03-01-ai-knowledge-triage-design.md](docs/plans/2026-03-01-ai-knowledge-triage-design.md) — original design doc

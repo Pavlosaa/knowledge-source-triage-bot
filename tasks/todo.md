@@ -78,6 +78,16 @@
 - Bot gracefully reports fetch error for tweet URLs
 - Fix: residential proxy or Twitter API v2 (paid) — **not yet implemented**
 
+## ✅ Phase 8: CI/CD Pipeline — DONE (2026-03-11)
+- [x] Fix .gitignore — add vault/, docs/tmp/, .claude/, reports/ (prevent secret leaks)
+- [x] Add pyproject.toml — ruff (lint+format) + mypy (typecheck) + pytest config
+- [x] Add test infrastructure — tests/conftest.py with shared fixtures
+- [x] Add CI workflow — GitHub Actions: lint, typecheck, test, security (pip-audit + TruffleHog)
+- [x] Add deploy workflow — auto-deploy via SSH after CI passes
+- [x] Auto-fix all ruff lint/format issues across codebase
+- [x] Branch protection — PR required, CI checks must pass, no force push
+- [x] gh auth refresh with workflow scope (required for pushing .github/workflows/)
+
 ## ⏳ Remaining / Future Work
 
 ### Nové funkce (backlog 2026-03-09)

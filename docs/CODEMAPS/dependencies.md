@@ -2,7 +2,7 @@
 
 # External Dependencies & Services Codemap
 
-**Deps scanned:** 17 files | **External services:** 6 | **Python packages:** 12 | **Updated:** 2026-03-02
+**Deps scanned:** 17 files | **External services:** 6 | **Python packages:** 17 | **Updated:** 2026-03-11
 
 ---
 
@@ -22,6 +22,17 @@
 | **notion-client** | 2.3.0 | Notion SDK (async) | notion/writer.py, notion/projects.py |
 | **python-dotenv** | 1.0.1 | Environment variable loading | config.py (startup) |
 | **loguru** | 0.7.3 | Structured logging | all modules |
+
+### Dev / CI Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| **pytest** | 8.3.4 | Test framework |
+| **pytest-cov** | 6.0.0 | Coverage reporting |
+| **pytest-asyncio** | 0.25.3 | Async test support |
+| **ruff** | 0.9.7 | Linting + formatting |
+| **mypy** | 1.15.0 | Static type checking |
+| **pip-audit** | 2.8.0 | Dependency vulnerability scanning |
 
 ---
 
@@ -340,8 +351,8 @@ Async dependencies: python-telegram-bot, notion-client, anthropic, httpx, playwr
 
 ## Hosting Environment
 
-**Platform:** Oracle Cloud Free Forever (ARM)
-**OS:** Oracle Linux 8/9
+**Platform:** Oracle Cloud Free Forever — VM.Standard.E5.Flex (AMD x86), 1 OCPU, 12GB RAM
+**OS:** Ubuntu
 **Python:** 3.12
 **Process Manager:** systemd
 **Service File:** `systemd/triage-bot.service`
@@ -358,7 +369,7 @@ Async dependencies: python-telegram-bot, notion-client, anthropic, httpx, playwr
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Oracle Cloud Free Forever (ARM, 24GB RAM)                   │
+│ Oracle Cloud Free Forever (AMD x86, 12GB RAM)               │
 │ ├─ Python 3.12 process (bot)                                │
 │ └─ systemd service manager                                  │
 └────┬──────────────────────────────────────────────────────────┘

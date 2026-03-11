@@ -2,7 +2,7 @@
 
 This document covers production deployment, systemd service management, logging, troubleshooting, and manual prerequisites for the AI Knowledge Source Triage Bot.
 
-**Last Updated:** 2026-03-07
+**Last Updated:** 2026-03-11
 
 ---
 
@@ -148,8 +148,8 @@ python3.12 --version
 
 ```bash
 cd /home/ubuntu
-git clone https://github.com/yourusername/ai-knowledge-source-triage.git
-cd ai-knowledge-source-triage
+git clone https://github.com/Pavlosaa/knowledge-source-triage-bot.git
+cd knowledge-source-triage-bot
 ```
 
 ### Step 3: Setup Virtual Environment
@@ -462,7 +462,22 @@ Common causes:
 
 ## Updates & Code Changes
 
-### Pull Latest Code
+### CI/CD Auto-Deploy (preferred)
+
+Push to `main` triggers GitHub Actions CI pipeline. After all checks pass (lint, typecheck, test, security), the deploy workflow SSHs to Oracle Cloud and runs:
+
+```bash
+cd ~/knowledge-source-triage-bot
+git pull origin main
+pip install -r requirements.txt
+sudo systemctl restart triage-bot.service
+```
+
+**Required GitHub Secrets:** `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`
+
+### Manual Deploy
+
+If CI/CD is not configured or you need to deploy manually:
 
 ```bash
 cd /home/ubuntu/knowledge-source-triage-bot
