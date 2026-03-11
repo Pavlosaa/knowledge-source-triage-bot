@@ -92,9 +92,11 @@
 # PROJECT SPECIFICS (local only — this project instance)
 # ============================================================
 
-## Git Workflow
+## Git Workflow (overrides Core §11 for this project)
 - **Branch protection on main** — PR required, CI checks (lint, typecheck, test, security) must pass
-- **ALWAYS create feature branch** → commit → push → PR. No direct pushes to main.
+- **ALWAYS create feature branch** → commit → push branch → create PR. No direct pushes to main.
 - Admin bypass exists as last resort but is NOT the standard workflow
+- "Push to remote" (Core §11) means push to **feature branch**, never directly to main
+- "Task Completion" (Core §11) = Implemented + Tested + Committed + Pushed to branch + PR created
 - CI pipeline: `.github/workflows/ci.yml` (ruff, mypy, pytest, pip-audit + TruffleHog)
 - Auto-deploy: `.github/workflows/deploy.yml` (SSH to Oracle Cloud after CI passes)
