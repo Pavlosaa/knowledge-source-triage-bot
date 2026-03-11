@@ -1,7 +1,7 @@
 # ============================================================
 # CORE INSTRUCTIONS (universal — synced to Notion master copy)
 # ============================================================
-# Master copy: https://www.notion.so/Claude-Code-300295e74c248063a68bcde2f242a10f
+# Master copy: https://www.notion.so/claude-md-ae98488ff84e4ba992f13968b9c6554e
 # Any changes to this section MUST be pushed to Notion after user approval.
 
 # Workflow Orchestration
@@ -91,3 +91,10 @@
 # ============================================================
 # PROJECT SPECIFICS (local only — this project instance)
 # ============================================================
+
+## Git Workflow
+- **Branch protection on main** — PR required, CI checks (lint, typecheck, test, security) must pass
+- **ALWAYS create feature branch** → commit → push → PR. No direct pushes to main.
+- Admin bypass exists as last resort but is NOT the standard workflow
+- CI pipeline: `.github/workflows/ci.yml` (ruff, mypy, pytest, pip-audit + TruffleHog)
+- Auto-deploy: `.github/workflows/deploy.yml` (SSH to Oracle Cloud after CI passes)
