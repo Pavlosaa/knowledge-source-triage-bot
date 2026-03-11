@@ -36,8 +36,10 @@
 - Challenge your own work before presenting it
 
 ## 6. Autonomous Bug Fixing
-- When given a bug report: just fix it. Don't ask for hand-holding
-- Point at logs, errors, failing tests -> then resolve them
+- When given a bug report: first write a test that reproduces the bug (RED)
+- Then fix the bug and prove it with the passing test (GREEN)
+- Use subagents to parallelize fix attempts when multiple approaches exist
+- Point at logs, errors, failing tests → then resolve them
 - Zero context switching required from the user
 - Go fix failing CI tests without being told how
 
@@ -67,9 +69,11 @@
 ## 11. Git Commit Strategy
 - **MANDATORY:** After completing ANY task, create a commit BEFORE marking task as complete
 - **Task Completion = Implemented + Tested + Committed + Pushed**
+- If branch protection exists: push to feature branch + create/update PR (never directly to main)
+- If no branch protection: push to main
 - Never end a session with uncommitted changes without explicit user acknowledgment
-- Pre-commit checklist: tests pass, TypeScript compiles, no console.errors
-- Commit message format: `type(scope): description` with task number
+- Pre-commit checklist: tests pass, build succeeds, no errors in output
+- Commit message format: `type(scope): description`
 - Post-commit: always push to remote immediately
 - End-of-session protocol: check `git status`, prompt commit if changes exist, verify all pushed
 
@@ -92,11 +96,8 @@
 # PROJECT SPECIFICS (local only — this project instance)
 # ============================================================
 
-## Git Workflow (overrides Core §11 for this project)
+## Git Workflow
 - **Branch protection on main** — PR required, CI checks (lint, typecheck, test, security) must pass
-- **ALWAYS create feature branch** → commit → push branch → create PR. No direct pushes to main.
 - Admin bypass exists as last resort but is NOT the standard workflow
-- "Push to remote" (Core §11) means push to **feature branch**, never directly to main
-- "Task Completion" (Core §11) = Implemented + Tested + Committed + Pushed to branch + PR created
 - CI pipeline: `.github/workflows/ci.yml` (ruff, mypy, pytest, pip-audit + TruffleHog)
 - Auto-deploy: `.github/workflows/deploy.yml` (SSH to Oracle Cloud after CI passes)
