@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import re
 from dataclasses import dataclass
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -55,10 +56,10 @@ async def fetch_repo(owner: str, repo: str, token: str | None = None) -> RepoCon
     )
 
 
-async def _fetch_json(client: httpx.AsyncClient, url: str) -> dict:
+async def _fetch_json(client: httpx.AsyncClient, url: str) -> dict[Any, Any]:
     response = await client.get(url)
     response.raise_for_status()
-    return response.json()
+    return response.json()  # type: ignore[no-any-return]
 
 
 async def _fetch_readme(client: httpx.AsyncClient, owner: str, repo: str) -> str | None:

@@ -84,7 +84,7 @@ class NotionWriter:
         """
         db_id = await self._get_or_create_database()
         page = await self._create_record(db_id, result, source_url)
-        url = page["url"]
+        url = str(page["url"])
         logger.info(f"Created Notion record: {url}")
         return url
 
@@ -115,7 +115,7 @@ class NotionWriter:
                 parent = result.get("parent", {})
                 if parent.get("page_id", "").replace("-", "") == self._parent_page_id.replace("-", ""):
                     logger.info(f'Found existing database "{DB_NAME}": {result["id"]}')
-                    return result["id"]
+                    return str(result["id"])
         except Exception as exc:
             logger.warning(f"Database search failed: {exc}")
         return None
@@ -141,7 +141,7 @@ class NotionWriter:
             },
         )
         logger.info(f'Created database "{DB_NAME}": {db["id"]}')
-        return db["id"]
+        return str(db["id"])
 
     # ------------------------------------------------------------------
     # Record creation
@@ -179,7 +179,7 @@ class NotionWriter:
         if relevant_projects:
             properties["Relevant Projects"] = {"multi_select": [{"name": p} for p in relevant_projects[:10]]}
 
-        return await self._client.pages.create(
+        return await self._client.pages.create(  # type: ignore[no-any-return]
             parent={"database_id": db_id},
             properties=properties,
             children=self._build_body(result, source_url),
