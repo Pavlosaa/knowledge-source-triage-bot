@@ -15,7 +15,7 @@ def _stars(score: int) -> str:
     return _SCORE_STARS.get(score, "?")
 
 
-def format_result(result: "AnalysisResult", original_url: str) -> str:
+def format_result(result: AnalysisResult, original_url: str) -> str:
     """Render an AnalysisResult as an HTML-formatted Telegram message."""
     if result.duplicate_of:
         return _format_duplicate(result, original_url)
@@ -24,26 +24,26 @@ def format_result(result: "AnalysisResult", original_url: str) -> str:
     return _format_rejected(result, original_url)
 
 
-def _format_duplicate(result: "AnalysisResult", original_url: str) -> str:
+def _format_duplicate(result: AnalysisResult, original_url: str) -> str:
     dup = result.duplicate_of
     lines: list[str] = [
-        f"🔗 <a href=\"{original_url}\">Původní zdroj</a>",
+        f'🔗 <a href="{original_url}">Původní zdroj</a>',
         "",
         "🔄 <b>Už zpracováno</b>",
     ]
     if dup.get("date"):
         lines.append(f"📅 Přidáno: {dup['date']}")
     if dup.get("url"):
-        lines.append(f"📖 <a href=\"{dup['url']}\">Otevřít v Notion →</a>")
+        lines.append(f'📖 <a href="{dup["url"]}">Otevřít v Notion →</a>')
     return "\n".join(lines)
 
 
-def _format_valuable(result: "AnalysisResult", original_url: str) -> str:
+def _format_valuable(result: AnalysisResult, original_url: str) -> str:
     score = result.discovery_score or 0
     stars = _stars(score)
 
     lines: list[str] = [
-        f"🔗 <a href=\"{original_url}\">Původní zdroj</a>",
+        f'🔗 <a href="{original_url}">Původní zdroj</a>',
         "",
         f"✅ <b>Hodnotný zdroj</b> | {stars} ({score}/5)",
         "",
@@ -71,7 +71,7 @@ def _format_valuable(result: "AnalysisResult", original_url: str) -> str:
 
     if result.notion_url:
         lines.append("")
-        lines.append(f"📖 <a href=\"{result.notion_url}\">Otevřít v Notion →</a>")
+        lines.append(f'📖 <a href="{result.notion_url}">Otevřít v Notion →</a>')
     else:
         lines.append("")
         lines.append("⚠️ <i>Notion záznam se nepodařilo vytvořit.</i>")
@@ -79,9 +79,9 @@ def _format_valuable(result: "AnalysisResult", original_url: str) -> str:
     return "\n".join(lines)
 
 
-def _format_rejected(result: "AnalysisResult", original_url: str) -> str:
+def _format_rejected(result: AnalysisResult, original_url: str) -> str:
     lines: list[str] = [
-        f"🔗 <a href=\"{original_url}\">Původní zdroj</a>",
+        f'🔗 <a href="{original_url}">Původní zdroj</a>',
         "",
         "❌ <b>Nízká hodnota</b>",
     ]

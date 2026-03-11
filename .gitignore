@@ -2,6 +2,14 @@
 .env
 cookies.json
 docs/vault/
+vault/
+
+# Claude Code
+.claude/
+
+# Temp & reports
+docs/tmp/
+reports/
 
 # Python
 __pycache__/

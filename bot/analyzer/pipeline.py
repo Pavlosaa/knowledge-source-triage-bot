@@ -17,15 +17,16 @@ from bot.analyzer.prompts import (
     REJECTION_SUMMARY_SYSTEM,
     VALUE_ASSESSMENT_SYSTEM,
 )
-from bot.fetcher.article import ArticleContent
 from bot.fetcher.article import fetch_article as fetch_generic_article
 from bot.fetcher.github import RepoContent, extract_repo_coords, fetch_repo
 from bot.fetcher.twitter import (
     TweetContent,
     detect_content_type,
     extract_tweet_id,
-    fetch_article as fetch_x_article,
     fetch_tweet,
+)
+from bot.fetcher.twitter import (
+    fetch_article as fetch_x_article,
 )
 
 if TYPE_CHECKING:
@@ -83,9 +84,9 @@ class AnalysisResult:
 
 async def run_pipeline(
     url: str,
-    config: "Config",
-    writer: "NotionWriter",
-    projects: "ProjectsCache",
+    config: Config,
+    writer: NotionWriter,
+    projects: ProjectsCache,
 ) -> AnalysisResult:
     """
     Full analysis pipeline:
@@ -223,9 +224,10 @@ async def run_pipeline(
 # Fetch routing
 # ---------------------------------------------------------------------------
 
+
 async def _fetch(
     url: str,
-    config: "Config",
+    config: Config,
 ) -> tuple[Any, str, str | None]:
     """Route URL to the right fetcher. Returns (fetched_content, content_type_label, author)."""
     # GitHub
@@ -262,6 +264,7 @@ async def _fetch(
 # Content normalization
 # ---------------------------------------------------------------------------
 
+
 def _build_content_text(fetched: Any) -> str:
     if isinstance(fetched, TweetContent):
         lines = [
@@ -272,7 +275,7 @@ def _build_content_text(fetched: Any) -> str:
             fetched.text,
         ]
         if fetched.embedded_urls:
-            lines += ["", "Embedded URLs:"] + fetched.embedded_urls
+            lines += ["", "Embedded URLs:", *fetched.embedded_urls]
         return "\n".join(lines)
 
     if isinstance(fetched, RepoContent):
@@ -300,6 +303,7 @@ def _credibility_prompt(url: str, content_preview: str) -> str:
 # ---------------------------------------------------------------------------
 # Claude call with retry
 # ---------------------------------------------------------------------------
+
 
 def _strip_markdown_json(text: str) -> str:
     """Extract JSON object from text, handling markdown code blocks and trailing content."""
@@ -332,7 +336,7 @@ def _strip_markdown_json(text: str) -> str:
             elif ch == "}":
                 depth -= 1
                 if depth == 0:
-                    return text[start:i + 1]
+                    return text[start : i + 1]
     return text[start:]
 
 

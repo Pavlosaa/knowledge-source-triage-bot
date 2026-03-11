@@ -64,8 +64,8 @@ def load_config() -> Config:
 
     try:
         telegram_group_id = int(telegram_group_id_raw)
-    except ValueError:
-        raise SystemExit(f"TELEGRAM_GROUP_ID must be an integer, got: {telegram_group_id_raw!r}")
+    except ValueError as err:
+        raise SystemExit(f"TELEGRAM_GROUP_ID must be an integer, got: {telegram_group_id_raw!r}") from err
 
     return Config(
         telegram_bot_token=telegram_bot_token,

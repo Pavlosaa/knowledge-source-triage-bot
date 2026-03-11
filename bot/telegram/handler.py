@@ -9,7 +9,7 @@ from telegram import Message, Update
 from telegram.ext import ContextTypes
 
 if TYPE_CHECKING:
-    from bot.analyzer.pipeline import AnalysisResult
+    pass
 
 # Matches http/https URLs
 _URL_RE = re.compile(r"https?://[^\s]+")

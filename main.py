@@ -5,14 +5,15 @@ import functools
 import sys
 
 from loguru import logger
-from telegram.ext import ApplicationBuilder, MessageHandler as TGMessageHandler, filters
+from telegram.ext import ApplicationBuilder, filters
+from telegram.ext import MessageHandler as TGMessageHandler
 
-from bot.config import load_config
-from bot.telegram.handler import MessageHandler, process_queue
-from bot.telegram.formatter import format_result
 from bot.analyzer.pipeline import run_pipeline
-from bot.notion.writer import NotionWriter
+from bot.config import load_config
 from bot.notion.projects import ProjectsCache
+from bot.notion.writer import NotionWriter
+from bot.telegram.formatter import format_result
+from bot.telegram.handler import MessageHandler, process_queue
 
 # --- Logging setup ---
 logger.remove()
@@ -39,11 +40,7 @@ async def main() -> None:
     queue: asyncio.Queue = asyncio.Queue()
     handler = MessageHandler(queue)
 
-    app = (
-        ApplicationBuilder()
-        .token(config.telegram_bot_token)
-        .build()
-    )
+    app = ApplicationBuilder().token(config.telegram_bot_token).build()
 
     # Listen to messages in the configured group only
     app.add_handler(

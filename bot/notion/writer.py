@@ -6,7 +6,7 @@ then creates a record for each analyzed source.
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse, urlunparse
 
@@ -77,7 +77,7 @@ class NotionWriter:
             logger.warning(f"Dedup query failed: {exc}")
             return None
 
-    async def create_source_page(self, result: "AnalysisResult", source_url: str) -> str:
+    async def create_source_page(self, result: AnalysisResult, source_url: str) -> str:
         """
         Create a Notion database record for the analyzed source.
         Returns the URL of the newly created page.
@@ -122,14 +122,8 @@ class NotionWriter:
 
     async def _create_database(self) -> str:
         """Create the AI Sources database with all required properties."""
-        topic_options = [
-            {"name": name, "color": color}
-            for name, color in _TOPIC_COLORS.items()
-        ]
-        content_type_options = [
-            {"name": name, "color": color}
-            for name, color in _CONTENT_TYPE_COLORS.items()
-        ]
+        topic_options = [{"name": name, "color": color} for name, color in _TOPIC_COLORS.items()]
+        content_type_options = [{"name": name, "color": color} for name, color in _CONTENT_TYPE_COLORS.items()]
 
         db = await self._client.databases.create(
             parent={"type": "page_id", "page_id": self._parent_page_id},
@@ -156,7 +150,7 @@ class NotionWriter:
     async def _create_record(
         self,
         db_id: str,
-        result: "AnalysisResult",
+        result: AnalysisResult,
         source_url: str,
     ) -> dict:
         relevant_projects = [
@@ -166,36 +160,24 @@ class NotionWriter:
         ]
 
         properties = {
-            "Title": {
-                "title": [{"text": {"content": result.title or source_url[:80]}}]
-            },
+            "Title": {"title": [{"text": {"content": result.title or source_url[:80]}}]},
             "Discovery Score": {"number": result.discovery_score},
             "Source URL": {"url": _canonicalize_url(source_url)},
-            "Author": {
-                "rich_text": [{"text": {"content": result.author or ""}}]
-            },
-            "Date Added": {
-                "date": {"start": datetime.now(timezone.utc).date().isoformat()}
-            },
+            "Author": {"rich_text": [{"text": {"content": result.author or ""}}]},
+            "Date Added": {"date": {"start": datetime.now(UTC).date().isoformat()}},
         }
 
         if result.content_type and result.content_type in _CONTENT_TYPE_COLORS:
             properties["Content Type"] = {"select": {"name": result.content_type}}
 
         if result.topics:
-            properties["Topic"] = {
-                "multi_select": [{"name": t} for t in result.topics[:3]]
-            }
+            properties["Topic"] = {"multi_select": [{"name": t} for t in result.topics[:3]]}
 
         if result.tags:
-            properties["Tags"] = {
-                "multi_select": [{"name": tag} for tag in result.tags[:10]]
-            }
+            properties["Tags"] = {"multi_select": [{"name": tag} for tag in result.tags[:10]]}
 
         if relevant_projects:
-            properties["Relevant Projects"] = {
-                "multi_select": [{"name": p} for p in relevant_projects[:10]]
-            }
+            properties["Relevant Projects"] = {"multi_select": [{"name": p} for p in relevant_projects[:10]]}
 
         return await self._client.pages.create(
             parent={"database_id": db_id},
@@ -207,7 +189,7 @@ class NotionWriter:
     # Page body blocks
     # ------------------------------------------------------------------
 
-    def _build_body(self, result: "AnalysisResult", source_url: str) -> list[dict]:
+    def _build_body(self, result: AnalysisResult, source_url: str) -> list[dict]:
         blocks: list[dict] = []
 
         if result.core_summary:
@@ -234,9 +216,7 @@ class NotionWriter:
             blocks.append(self._heading2("🎯 Relevance pro projekty"))
             for rec in result.project_recommendations:
                 toggle_text = f"{rec['project_name']} — {rec['relevance'].upper()}"
-                blocks.append(
-                    self._toggle(toggle_text, children=[self._paragraph(rec["how_to_apply"])])
-                )
+                blocks.append(self._toggle(toggle_text, children=[self._paragraph(rec["how_to_apply"])]))
 
         blocks += [
             self._heading2("🔗 Zdroj"),
@@ -254,20 +234,24 @@ class NotionWriter:
         return [{"type": "text", "text": {"content": content[:2000]}}]
 
     def _heading2(self, text: str) -> dict:
-        return {"object": "block", "type": "heading_2",
-                "heading_2": {"rich_text": self._rich_text(text)}}
+        return {"object": "block", "type": "heading_2", "heading_2": {"rich_text": self._rich_text(text)}}
 
     def _paragraph(self, text: str) -> dict:
-        return {"object": "block", "type": "paragraph",
-                "paragraph": {"rich_text": self._rich_text(text)}}
+        return {"object": "block", "type": "paragraph", "paragraph": {"rich_text": self._rich_text(text)}}
 
     def _bullet(self, text: str) -> dict:
-        return {"object": "block", "type": "bulleted_list_item",
-                "bulleted_list_item": {"rich_text": self._rich_text(text)}}
+        return {
+            "object": "block",
+            "type": "bulleted_list_item",
+            "bulleted_list_item": {"rich_text": self._rich_text(text)},
+        }
 
     def _toggle(self, text: str, children: list[dict]) -> dict:
-        return {"object": "block", "type": "toggle",
-                "toggle": {"rich_text": self._rich_text(text), "children": children}}
+        return {
+            "object": "block",
+            "type": "toggle",
+            "toggle": {"rich_text": self._rich_text(text), "children": children},
+        }
 
     def _bookmark(self, url: str) -> dict:
         return {"object": "block", "type": "bookmark", "bookmark": {"url": url}}
