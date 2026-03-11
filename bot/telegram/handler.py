@@ -2,7 +2,8 @@
 
 import asyncio
 import re
-from typing import TYPE_CHECKING
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 from telegram import Message, Update
@@ -49,9 +50,9 @@ class MessageHandler:
 
 
 async def process_queue(
-    queue: asyncio.Queue,
-    pipeline_fn,
-    format_fn,
+    queue: asyncio.Queue[Any],
+    pipeline_fn: Callable[..., Awaitable[Any]],
+    format_fn: Callable[..., str],
 ) -> None:
     """
     Consume the message queue sequentially.

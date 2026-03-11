@@ -31,6 +31,8 @@ def _format_duplicate(result: AnalysisResult, original_url: str) -> str:
         "",
         "🔄 <b>Už zpracováno</b>",
     ]
+    if dup is None:
+        return "\n".join(lines)
     if dup.get("date"):
         lines.append(f"📅 Přidáno: {dup['date']}")
     if dup.get("url"):

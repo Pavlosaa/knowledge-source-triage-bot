@@ -1,7 +1,7 @@
 # ============================================================
 # CORE INSTRUCTIONS (universal — synced to Notion master copy)
 # ============================================================
-# Master copy: https://www.notion.so/Claude-Code-300295e74c248063a68bcde2f242a10f
+# Master copy: https://www.notion.so/claude-md-ae98488ff84e4ba992f13968b9c6554e
 # Any changes to this section MUST be pushed to Notion after user approval.
 
 # Workflow Orchestration
@@ -36,8 +36,10 @@
 - Challenge your own work before presenting it
 
 ## 6. Autonomous Bug Fixing
-- When given a bug report: just fix it. Don't ask for hand-holding
-- Point at logs, errors, failing tests -> then resolve them
+- When given a bug report: first write a test that reproduces the bug (RED)
+- Then fix the bug and prove it with the passing test (GREEN)
+- Use subagents to parallelize fix attempts when multiple approaches exist
+- Point at logs, errors, failing tests → then resolve them
 - Zero context switching required from the user
 - Go fix failing CI tests without being told how
 
@@ -64,14 +66,33 @@
 - When presenting options: state your recommendation and why
 - Avoid hedging — be direct about trade-offs and risks
 
-## 11. Git Commit Strategy
+## 11. Code Quality Guardian
+- **I am the guardian of code quality and consistency for the entire codebase**
+- Before implementing new features: assess the health of existing code in the affected area
+- On every significant change: verify consistency of patterns, naming, error handling, types
+- Proactively spot and fix technical debt when encountered — don't defer it
+- Code review mindset: ask "Would a staff engineer approve this?" before every PR/commit
+- Never leave code in a worse state than you found it
+
+## 12. Git Commit Strategy
 - **MANDATORY:** After completing ANY task, create a commit BEFORE marking task as complete
 - **Task Completion = Implemented + Tested + Committed + Pushed**
+- If branch protection exists: push to feature branch + create/update PR (never directly to main)
+- If no branch protection: push to main
 - Never end a session with uncommitted changes without explicit user acknowledgment
-- Pre-commit checklist: tests pass, TypeScript compiles, no console.errors
-- Commit message format: `type(scope): description` with task number
+- Pre-commit checklist: tests pass, build succeeds, no errors in output
+- Commit message format: `type(scope): description`
 - Post-commit: always push to remote immediately
 - End-of-session protocol: check `git status`, prompt commit if changes exist, verify all pushed
+
+## 13. Periodic Code Review
+- **After completing any task that introduced new code:** Run `/code-review-ecc` before marking the task complete
+- **Mandatory before milestones:** Run `/code-review-repo-ecc` before: production deployment, customer demo, or adding a new connector/auth system
+- **Immediate trigger** (do not wait for task end) if:
+  - Security-sensitive code added (auth, input handling, API endpoints, file/network access)
+  - External API or scraper added (SSRF, injection risk)
+  - Any change to authentication, authorization, or session handling
+- Block task completion if CRITICAL or HIGH issues remain unresolved
 
 # Task Management
 1. **Plan First**: Write plan to 'tasks/todo.md' with checkable items
@@ -91,3 +112,9 @@
 # ============================================================
 # PROJECT SPECIFICS (local only — this project instance)
 # ============================================================
+
+## Git Workflow
+- **Branch protection on main** — PR required, CI checks (lint, typecheck, test, security) must pass
+- Admin bypass exists as last resort but is NOT the standard workflow
+- CI pipeline: `.github/workflows/ci.yml` (ruff, mypy, pytest, pip-audit + TruffleHog)
+- Auto-deploy: `.github/workflows/deploy.yml` (SSH to Oracle Cloud after CI passes)

@@ -242,22 +242,22 @@ async def _fetch(
     x_type = detect_content_type(url)
     if x_type == "tweet":
         tweet_id = extract_tweet_id(url)
-        fetched = await fetch_tweet(
-            tweet_id,
+        fetched_tweet = await fetch_tweet(
+            tweet_id or "",
             username=config.twitter_username,
             email=config.twitter_email,
             password=config.twitter_password,
         )
-        author = f"@{fetched.author_username}"
-        return fetched, "Tweet", author
+        author = f"@{fetched_tweet.author_username}"
+        return fetched_tweet, "Tweet", author
 
     if x_type == "article":
-        fetched = await fetch_x_article(url)
-        return fetched, "X Article", fetched.author_name
+        fetched_article = await fetch_x_article(url)
+        return fetched_article, "X Article", fetched_article.author_name
 
     # Generic article / web page
-    fetched = await fetch_generic_article(url)
-    return fetched, "Article", None
+    fetched_generic = await fetch_generic_article(url)
+    return fetched_generic, "Article", None
 
 
 # ---------------------------------------------------------------------------
@@ -374,9 +374,11 @@ async def _call_claude(
                 system=system,
                 messages=[{"role": "user", "content": user}],
             )
-            text = response.content[0].text.strip()
+            block = response.content[0]
+            raw_text = block.text if hasattr(block, "text") else ""  # type: ignore[union-attr]
+            text = raw_text.strip()
             text = _strip_markdown_json(text)
-            return json.loads(text)
+            return json.loads(text)  # type: ignore[no-any-return]
         except json.JSONDecodeError as exc:
             logger.warning(f"Claude returned invalid JSON (attempt {attempt + 1}): {exc}")
             last_exc = exc
