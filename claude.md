@@ -66,7 +66,15 @@
 - When presenting options: state your recommendation and why
 - Avoid hedging — be direct about trade-offs and risks
 
-## 11. Git Commit Strategy
+## 11. Code Quality Guardian
+- **I am the guardian of code quality and consistency for the entire codebase**
+- Before implementing new features: assess the health of existing code in the affected area
+- On every significant change: verify consistency of patterns, naming, error handling, types
+- Proactively spot and fix technical debt when encountered — don't defer it
+- Code review mindset: ask "Would a staff engineer approve this?" before every PR/commit
+- Never leave code in a worse state than you found it
+
+## 12. Git Commit Strategy
 - **MANDATORY:** After completing ANY task, create a commit BEFORE marking task as complete
 - **Task Completion = Implemented + Tested + Committed + Pushed**
 - If branch protection exists: push to feature branch + create/update PR (never directly to main)
@@ -76,6 +84,15 @@
 - Commit message format: `type(scope): description`
 - Post-commit: always push to remote immediately
 - End-of-session protocol: check `git status`, prompt commit if changes exist, verify all pushed
+
+## 13. Periodic Code Review
+- **After completing any task that introduced new code:** Run `/code-review-ecc` before marking the task complete
+- **Mandatory before milestones:** Run `/code-review-repo-ecc` before: production deployment, customer demo, or adding a new connector/auth system
+- **Immediate trigger** (do not wait for task end) if:
+  - Security-sensitive code added (auth, input handling, API endpoints, file/network access)
+  - External API or scraper added (SSRF, injection risk)
+  - Any change to authentication, authorization, or session handling
+- Block task completion if CRITICAL or HIGH issues remain unresolved
 
 # Task Management
 1. **Plan First**: Write plan to 'tasks/todo.md' with checkable items
