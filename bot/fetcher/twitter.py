@@ -142,11 +142,9 @@ async def fetch_article(url: str, api_key: str) -> ArticleContent:
 
     # Title from og:title or <title>
     og_title = soup.find("meta", property="og:title")
-    title = (
-        og_title["content"]  # type: ignore[index]
-        if og_title and og_title.get("content")
-        else None
-    )
+    title: str | None = None
+    if og_title and hasattr(og_title, "get") and og_title.get("content"):  # type: ignore[union-attr]
+        title = str(og_title["content"])  # type: ignore[index]
     if not title:
         title_el = soup.find("title")
         title = title_el.get_text(strip=True) if title_el else None
