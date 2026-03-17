@@ -1,8 +1,8 @@
-<!-- Generated: 2026-03-02 | Files scanned: 17 | Token estimate: ~720 -->
+<!-- Generated: 2026-03-02 | Files scanned: 18 | Token estimate: ~720 -->
 
 # Backend Module Codemap
 
-**Files:** 17 Python modules | **Entry:** main.py | **Updated:** 2026-03-11
+**Files:** 18 Python modules | **Entry:** main.py | **Updated:** 2026-03-17
 
 ---
 
@@ -31,9 +31,7 @@ Imports:
 class Config:
   telegram_bot_token: str
   telegram_group_id: int
-  twitter_username: str
-  twitter_password: str
-  twitter_email: str
+  scrapfly_api_key: str | None
   anthropic_api_key: str
   notion_api_key: str
   notion_rnd_page_id: str
@@ -139,18 +137,15 @@ class ArticleContent:
 detect_content_type(url: str) → str
   └─ regex match → "tweet" | "article" | "unknown"
 
-extract_tweet_id(url: str) → str | None
-  └─ regex match on x.com/\w+/status/(\d+)
+async fetch_tweet(tweet_id: str, scrapfly_api_key: str | None) → TweetContent
+  └─ ScrapFly HTTP API call (free tier w/o key) + BS4 parse
 
-async fetch_tweet(tweet_id: str) → TweetContent
-  └─ TODO: twikit session + fetch
-
-async fetch_article(url: str) → ArticleContent
-  └─ TODO: twikit X Article fetch
+async fetch_article(url: str, scrapfly_api_key: str | None) → ArticleContent
+  └─ ScrapFly HTTP API call (free tier w/o key) + BS4 parse
 ```
 
 **Regex patterns:**
-- `_TWEET_URL_RE` — `r"x\.com/\w+/status/(\d+)"`
+- `_TWEET_URL_RE` — `r"x\.com/(\w+)/status/(\d+)"`
 - `_ARTICLE_URL_RE` — `r"x\.com/i/article/"`
 
 ### bot/fetcher/article.py
@@ -387,7 +382,7 @@ class ProjectsCache:
 | config.py | os, dataclasses, dotenv, loguru | Env var validation |
 | telegram/handler.py | asyncio, re, telegram, loguru | Message reception + queue |
 | telegram/formatter.py | TYPE_CHECKING, bot.analyzer.pipeline | Result formatting |
-| fetcher/twitter.py | dataclasses, re | Tweet/article types + regex |
+| fetcher/twitter.py | dataclasses, re, httpx, bs4, loguru | Tweet/article types + ScrapFly API |
 | fetcher/article.py | dataclasses | Article type |
 | fetcher/github.py | dataclasses, re | Repo type + regex |
 | fetcher/playwright.py | dataclasses | Page content type |
@@ -405,7 +400,7 @@ class ProjectsCache:
 | **Telegram** | handler, main | python-telegram-bot.ext | BOT_TOKEN | Unlimited |
 | **Claude** | pipeline (future) | anthropic SDK | ANTHROPIC_API_KEY | Per-model |
 | **Notion** | writer, projects | notion_client (async) | NOTION_API_KEY | 3 req/sec |
-| **X.com** | fetcher/twitter (future) | twikit | username/pwd/email | Varies |
+| **X.com** | fetcher/twitter | ScrapFly API (httpx) | optional scrapfly_api_key | Free tier 1000 req/mo |
 | **GitHub** | fetcher/github (future) | REST API (httpx) | GITHUB_TOKEN (optional) | 60 req/h (60–5000 with token) |
 | **Playwright** | fetcher/playwright (future) | Chromium headless | none | N/A (local) |
 

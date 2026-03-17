@@ -1,8 +1,8 @@
-<!-- Generated: 2026-03-02 | Files scanned: 17 | Token estimate: ~580 -->
+<!-- Generated: 2026-03-02 | Files scanned: 18 | Token estimate: ~580 -->
 
 # Data & Configuration Codemap
 
-**Files:** config.py, prompts.py, writer.py, projects.py | **Updated:** 2026-03-11
+**Files:** config.py, prompts.py, writer.py, projects.py, twitter.py | **Updated:** 2026-03-17
 
 ---
 
@@ -16,10 +16,8 @@ class Config(frozen=True):
   telegram_bot_token: str          # from @BotFather
   telegram_group_id: int           # group numeric ID (can be negative)
 
-  # X.com / Twitter authentication (required for twikit)
-  twitter_username: str            # @username
-  twitter_password: str            # account password
-  twitter_email: str               # email associated with account
+  # X.com / ScrapFly (optional, enables tweet fetching)
+  scrapfly_api_key: str | None     # from scrapfly.io (optional, free tier 1000 req/mo)
 
   # Claude AI (required)
   anthropic_api_key: str           # from console.anthropic.com

@@ -1,8 +1,8 @@
-<!-- Generated: 2026-03-02 | Files scanned: 17 | Token estimate: ~520 -->
+<!-- Generated: 2026-03-02 | Files scanned: 18 | Token estimate: ~520 -->
 
 # External Dependencies & Services Codemap
 
-**Deps scanned:** 17 files | **External services:** 6 | **Python packages:** 17 | **Updated:** 2026-03-11
+**Deps scanned:** 18 files | **External services:** 6 | **Python packages:** 16 | **Updated:** 2026-03-17
 
 ---
 
@@ -13,12 +13,11 @@
 | Package | Version | Purpose | Usage |
 |---------|---------|---------|-------|
 | **python-telegram-bot** | 21.10 | Telegram Bot API client (async) | main.py, handler.py |
-| **twikit** | 2.3.3 | X.com scraping (unofficial, session-based) | fetcher/twitter.py (not yet implemented) |
-| **playwright** | 1.50.0 | Headless browser (Chromium) | fetcher/playwright.py (not yet implemented) |
-| **httpx** | 0.28.1 | Async HTTP client | fetcher/article.py, fetcher/github.py (not yet implemented) |
-| **beautifulsoup4** | 4.13.3 | HTML parsing | fetcher/article.py (not yet implemented) |
-| **lxml** | 5.3.1 | XML/HTML parser (BS4 backend) | fetcher/article.py (not yet implemented) |
-| **anthropic** | 0.49.0 | Claude API client | analyzer/pipeline.py (not yet implemented) |
+| **playwright** | 1.50.0 | Headless browser (Chromium) | fetcher/playwright.py (fallback) |
+| **httpx** | 0.28.1 | Async HTTP client | fetcher/twitter.py (ScrapFly), fetcher/article.py, fetcher/github.py |
+| **beautifulsoup4** | 4.13.3 | HTML parsing | fetcher/twitter.py (ScrapFly), fetcher/article.py |
+| **lxml** | 5.3.1 | XML/HTML parser (BS4 backend) | fetcher/twitter.py, fetcher/article.py |
+| **anthropic** | 0.49.0 | Claude API client | analyzer/pipeline.py |
 | **notion-client** | 2.3.0 | Notion SDK (async) | notion/writer.py, notion/projects.py |
 | **python-dotenv** | 1.0.1 | Environment variable loading | config.py (startup) |
 | **loguru** | 0.7.3 | Structured logging | all modules |
@@ -172,32 +171,33 @@ response = await client.blocks.children.list(block_id=projects_page_id)
 
 ---
 
-### X.com / Twitter (twikit)
+### X.com / Twitter (ScrapFly API)
 
-**Module:** `bot/fetcher/twitter.py` (not yet implemented)
-**Library:** `twikit` v2.3.3
-**Protocol:** Browser-like HTTP (unofficial)
+**Module:** `bot/fetcher/twitter.py`
+**Library:** `httpx` v0.28.1 + `beautifulsoup4` v4.13.3
+**Protocol:** HTTPS REST (ScrapFly proxy service)
 
 **Authentication:**
-- `TWITTER_USERNAME` — @handle
-- `TWITTER_PASSWORD` — account password
-- `TWITTER_EMAIL` — account email
+- Optional: `SCRAPFLY_API_KEY` — from scrapfly.io
+- Free tier: 1000 requests/month, no authentication
+- Paid tier: residential proxies, IP rotation, CAPTCHA handling
 
 **Rate Limits:**
-- Session-based, varies (no official limit published)
-- Risk of rate limiting on heavy use
+- Free: 1000 req/month (unlimited once quota exhausted, rate-limited)
+- Paid: based on plan (~$19/month for basic)
 
 **Content types detected:**
 ```python
 # Tweet: x.com/@user/status/123456789
-extract_tweet_id(url) → "123456789"
-fetch_tweet(tweet_id) → TweetContent(
+detect_content_type(url) → "tweet"
+fetch_tweet(tweet_id, scrapfly_api_key) → TweetContent(
   tweet_id, author_name, author_username, follower_count,
   is_verified, text, embedded_urls
 )
 
 # X Article: x.com/i/article/123456789
-fetch_article(url) → ArticleContent(url, title, author_name, body)
+detect_content_type(url) → "article"
+fetch_article(url, scrapfly_api_key) → ArticleContent(url, title, author_name, body)
 ```
 
 **Data extracted:**
@@ -205,7 +205,7 @@ fetch_article(url) → ArticleContent(url, title, author_name, body)
 - Tweet text + embedded URLs
 - Article title, author, body
 
-**Fallback:** Playwright (fetcher/playwright.py) if twikit fails
+**Fallback:** Playwright (fetcher/playwright.py) if ScrapFly call fails
 
 ---
 
@@ -331,18 +331,18 @@ main.py
 │  ├─ re (stdlib)
 │  ├─ loguru
 │  └─ telegram.ext (python-telegram-bot)
-├─ bot.analyzer.pipeline (anthropic [TODO])
+├─ bot.analyzer.pipeline (anthropic)
 │  ├─ dataclasses (stdlib)
 │  ├─ loguru
-│  ├─ bot.fetcher.* (twikit, httpx, playwright, beautifulsoup4)
-│  ├─ anthropic (anthropic) [TODO]
+│  ├─ bot.fetcher.* (httpx, playwright, beautifulsoup4)
+│  ├─ anthropic (anthropic)
 │  ├─ bot.analyzer.prompts
 │  ├─ bot.notion.projects (notion-client)
 │  └─ bot.notion.writer (notion-client)
 ├─ bot.telegram.formatter
 └─ loguru
 
-Total external packages: 12
+Total external packages: 11
 Total import paths: ~30
 Async dependencies: python-telegram-bot, notion-client, anthropic, httpx, playwright
 ```
@@ -405,17 +405,18 @@ Async dependencies: python-telegram-bot, notion-client, anthropic, httpx, playwr
 | python-telegram-bot | High | Low | Official Telegram client, well-maintained |
 | anthropic | High | Low | Official Claude SDK, well-maintained |
 | notion-client | Medium | Medium | Official but less mature than Telegram; handles API changes well |
-| twikit | Medium | Medium | Unofficial X.com client; risk of breaking if X changes API |
-| playwright | High | Low | Official Microsoft project; cross-platform browser automation |
 | httpx | High | Low | Modern HTTP client; better than requests for async |
+| playwright | High | Low | Official Microsoft project; cross-platform browser automation |
 | beautifulsoup4 | High | Low | Standard HTML parser; very stable |
 | python-dotenv | High | Low | Simple, widely-used env var loader |
 | loguru | High | Low | Popular structured logging library |
 | lxml | High | Low | C-based parser; fast and stable |
 
-**Key vulnerabilities:**
-- twikit is unofficial → X.com API changes may break fetching
-- Mitigation: Playwright fallback for all X.com content
+**Key improvements:**
+- Replaced twikit (unofficial X client) with ScrapFly API
+- ScrapFly handles IP blocking, CAPTCHA, rate-limiting for X.com
+- Free tier 1000 req/mo sufficient for casual use
+- Fallback: Playwright still available for resilience
 - All other dependencies are official or widely-used open-source projects
 
 ---
@@ -440,7 +441,7 @@ Before running in production:
 3. **Secrets (.env file):**
    ```bash
    cp .env.example .env
-   # Fill in all required vars
+   # Fill in all required vars (ScrapFly API key is optional)
    chmod 600 .env
    ```
 

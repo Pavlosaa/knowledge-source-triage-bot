@@ -1,11 +1,11 @@
-<!-- Generated: 2026-03-02 | Files scanned: 17 | Token estimate: ~650 -->
+<!-- Generated: 2026-03-02 | Files scanned: 18 | Token estimate: ~650 -->
 
 # Architecture Codemap
 
 **Project:** AI Knowledge Source Triage Bot
 **Type:** Python 3.12 async application
 **Entry Point:** `/bot/main.py`
-**Updated:** 2026-03-11
+**Updated:** 2026-03-17
 
 ---
 
@@ -85,10 +85,10 @@
    ├─ DETECT content type (x.com, github, article, etc.)
    │
    ├─ FETCH content
-   │  ├─ x.com/*/status/* → twikit.get_tweet()
+   │  ├─ x.com/*/status/* → ScrapFly API → BS4 parse
    │  │  └─ [TweetContent: author, text, verified, followers]
    │  │
-   │  ├─ x.com/i/article/* → Playwright fallback
+   │  ├─ x.com/i/article/* → ScrapFly API → BS4 parse
    │  │  └─ [ArticleContent: title, body]
    │  │
    │  ├─ github.com/*/*  → GitHub REST API
@@ -167,7 +167,7 @@ External APIs:
 ├─ Telegram (python-telegram-bot v21)
 ├─ Claude (anthropic v0.49)
 ├─ Notion (notion-client v2.3)
-├─ X.com / twikit (v2.3.3)
+├─ X.com / ScrapFly (httpx v0.28.1, optional API key)
 ├─ GitHub REST API (httpx v0.28.1)
 ├─ Playwright (v1.50.0)
 └─ BeautifulSoup4 (v4.13.3)
@@ -194,13 +194,13 @@ External APIs:
 Required env vars (fail-fast at startup):
 - `TELEGRAM_BOT_TOKEN` — BotFather token
 - `TELEGRAM_GROUP_ID` — Integer group ID
-- `TWITTER_USERNAME`, `TWITTER_PASSWORD`, `TWITTER_EMAIL` — twikit login
 - `ANTHROPIC_API_KEY` — Claude API key
 - `NOTION_API_KEY` — Notion integration token
 - `NOTION_RND_PAGE_ID` — Parent page ID (ICT Project R&D Resources)
 - `NOTION_PROJECTS_PAGE_ID` — Projects page ID (for context cache)
 
 Optional:
+- `SCRAPFLY_API_KEY` — For X.com fetching (default: None → fetch disabled)
 - `GITHUB_TOKEN` — For higher API rate limit (default: None → 60 req/h)
 
 All loaded at startup via `load_config()` → raises SystemExit if missing.

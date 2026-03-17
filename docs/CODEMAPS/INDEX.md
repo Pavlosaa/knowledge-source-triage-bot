@@ -1,4 +1,4 @@
-<!-- Generated: 2026-03-02 | Updated: 2026-03-11 -->
+<!-- Generated: 2026-03-02 | Updated: 2026-03-17 -->
 
 # AI Knowledge Source Triage Bot — Codebase Overview
 
@@ -51,14 +51,15 @@ Python packages, external service integrations (Telegram, Claude, Notion, X.com,
 | **Telegram Formatter** | DONE | HTML formatting for valuable + rejected sources |
 | **Notion Writer** | DONE | DB creation, record creation with properties + body blocks |
 | **Project Context Cache** | DONE | Async-safe cache, 24h TTL, Notion page description fetching |
-| **Fetcher (Twitter)** | DONE | twikit session + tweet/article fetch (blocked by Oracle Cloud IP) |
+| **Fetcher (Twitter)** | DONE | ScrapFly HTTP API + tweet/article fetch (httpx + BS4) |
 | **Fetcher (Article)** | DONE | httpx + BS4 with Playwright fallback |
 | **Fetcher (GitHub)** | DONE | REST API: metadata + README |
 | **Fetcher (Playwright)** | DONE | Headless Chromium for JS-rendered pages |
 | **Analysis Pipeline** | DONE | 3-phase orchestration (Haiku×2 → Sonnet), retry, JSON extraction |
+| **Tests (Twitter)** | DONE | 14 unit tests for twitter.py, 94% coverage |
 | **CI/CD Pipeline** | DONE | GitHub Actions: lint, typecheck, test, security + auto-deploy |
 
-**Bot is LIVE** on Oracle Cloud since 2026-03-07. GitHub and article URLs work end-to-end. X.com URLs blocked at network level (Oracle Cloud IPs).
+**Bot is LIVE** on Oracle Cloud since 2026-03-07. GitHub, article, and X.com URLs work end-to-end via ScrapFly API.
 
 ---
 
@@ -72,7 +73,7 @@ knowledge-source-triage-bot/
 │   │   ├── handler.py            # Message handler + queue processor
 │   │   └── formatter.py          # Result formatting for Telegram
 │   ├── fetcher/
-│   │   ├── twitter.py            # X.com tweets/articles (twikit)
+│   │   ├── twitter.py            # X.com tweets/articles (ScrapFly API)
 │   │   ├── article.py            # Generic articles (httpx + BS4)
 │   │   ├── github.py             # GitHub repos (REST API)
 │   │   └── playwright.py         # Headless browser fallback
@@ -84,7 +85,8 @@ knowledge-source-triage-bot/
 │       └── projects.py           # Project context cache
 ├── tests/                         # pytest test suite
 │   ├── __init__.py
-│   └── conftest.py               # Shared fixtures
+│   ├── conftest.py               # Shared fixtures
+│   └── test_twitter.py           # Twitter fetcher tests (14 tests, 94% coverage)
 ├── .github/workflows/             # CI/CD
 │   ├── ci.yml                    # lint, typecheck, test, security
 │   └── deploy.yml                # Auto-deploy to Oracle Cloud
@@ -120,7 +122,7 @@ knowledge-source-triage-bot/
 | bot/telegram/formatter.py | Result → Telegram HTML | ✅ |
 | bot/analyzer/pipeline.py | 3-phase analysis orchestration | ✅ |
 | bot/analyzer/prompts.py | All Claude system prompts | ✅ |
-| bot/fetcher/twitter.py | X.com fetch (twikit) | ✅ |
+| bot/fetcher/twitter.py | X.com fetch (ScrapFly API) | ✅ |
 | bot/fetcher/article.py | Generic article (httpx+BS4) | ✅ |
 | bot/fetcher/github.py | GitHub repo (REST API) | ✅ |
 | bot/fetcher/playwright.py | Headless browser fallback | ✅ |
@@ -147,7 +149,7 @@ knowledge-source-triage-bot/
 2. **Configure:**
    ```bash
    cp .env.example .env
-   # Fill in secrets: Telegram, X.com, Claude, Notion, GitHub tokens
+   # Fill in secrets: Telegram, Claude, Notion, GitHub tokens, ScrapFly (optional)
    ```
 
 3. **Run:**
@@ -191,7 +193,7 @@ Telegram Reply
 | **Sequential queue processing** | Simpler rate limiting, easier debugging | One URL at a time (not parallel) |
 | **Haiku (phase 1, 2, 3B) + Sonnet (phase 3A)** | Cost efficiency + best analysis quality | 3 Claude calls per URL |
 | **Project context cache (24h TTL)** | Reduce Notion API calls, faster phase 3A | Stale context for 24h |
-| **twikit + Playwright fallback** | Free (no API key), covers both simple + JS-heavy | Unofficial X.com client |
+| **ScrapFly + Playwright fallback** | Residential proxy/rotation (optional), covers X.com + JS-heavy | Paid tier, free tier 1000 req/mo |
 | **frozen Config dataclass** | Immutable config, fail-fast validation | Must create new instance to modify |
 
 ---
@@ -250,7 +252,7 @@ Telegram Reply
 | "Missing required env var" | Config incomplete | Fill `.env` with all vars from `.env.example` |
 | Telegram not responding | Bot token invalid or group ID wrong | Check `TELEGRAM_BOT_TOKEN` and `TELEGRAM_GROUP_ID` |
 | Notion page not created | API key invalid or parent page ID wrong | Verify `NOTION_API_KEY` and page IDs in `.env` |
-| X.com tweet not fetching | X.com creds wrong or IP blocked | Check `TWITTER_*` env vars; retry or use VPN |
+| X.com tweet not fetching | ScrapFly API key missing or rate limited | Check `SCRAPFLY_API_KEY` env var; free tier 1000 req/mo |
 | Claude API error | Invalid key or rate limited | Check `ANTHROPIC_API_KEY`; wait before retrying |
 
 ---
@@ -260,7 +262,7 @@ Telegram Reply
 - **Generated:** 2026-03-02, **Updated:** 2026-03-11
 - **Architecture matches:** Yes (verified against live deployment)
 - **All file paths verified:** Yes
-- **Next update:** When X.com fetching or tests are implemented
+- **Next update:** When integration tests and remaining fetcher tests are implemented
 
 ---
 
