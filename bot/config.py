@@ -15,10 +15,8 @@ class Config:
     telegram_bot_token: str
     telegram_group_id: int
 
-    # X.com
-    twitter_username: str
-    twitter_password: str
-    twitter_email: str
+    # X.com (ScrapFly — optional, enables tweet fetching)
+    scrapfly_api_key: str | None
 
     # Claude
     anthropic_api_key: str
@@ -48,14 +46,12 @@ def load_config() -> Config:
 
     telegram_bot_token = require("TELEGRAM_BOT_TOKEN")
     telegram_group_id_raw = require("TELEGRAM_GROUP_ID")
-    twitter_username = require("TWITTER_USERNAME")
-    twitter_password = require("TWITTER_PASSWORD")
-    twitter_email = require("TWITTER_EMAIL")
     anthropic_api_key = require("ANTHROPIC_API_KEY")
     notion_api_key = require("NOTION_API_KEY")
     notion_rnd_page_id = require("NOTION_RND_PAGE_ID")
     notion_projects_page_id = require("NOTION_PROJECTS_PAGE_ID")
     github_token = optional("GITHUB_TOKEN")
+    scrapfly_api_key = optional("SCRAPFLY_API_KEY")
 
     if errors:
         for error in errors:
@@ -70,9 +66,7 @@ def load_config() -> Config:
     return Config(
         telegram_bot_token=telegram_bot_token,
         telegram_group_id=telegram_group_id,
-        twitter_username=twitter_username,
-        twitter_password=twitter_password,
-        twitter_email=twitter_email,
+        scrapfly_api_key=scrapfly_api_key,
         anthropic_api_key=anthropic_api_key,
         notion_api_key=notion_api_key,
         notion_rnd_page_id=notion_rnd_page_id,

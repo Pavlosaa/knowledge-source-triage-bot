@@ -10,4 +10,5 @@ def mock_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TELEGRAM_GROUP_ID", "-1001234567890")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
     monkeypatch.setenv("NOTION_API_KEY", "test-notion-key")
-    monkeypatch.setenv("NOTION_PARENT_PAGE_ID", "test-page-id")
+    monkeypatch.setenv("NOTION_RND_PAGE_ID", "test-rnd-page-id")
+    monkeypatch.setenv("NOTION_PROJECTS_PAGE_ID", "test-projects-page-id")
