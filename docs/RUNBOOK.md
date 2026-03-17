@@ -2,7 +2,7 @@
 
 This document covers production deployment, systemd service management, logging, troubleshooting, and manual prerequisites for the AI Knowledge Source Triage Bot.
 
-**Last Updated:** 2026-03-11
+**Last Updated:** 2026-03-17
 
 ---
 
@@ -95,16 +95,17 @@ Before deploying, ensure you have completed these manual setup steps:
 4. Copy the key (starts with `sk-ant-`)
 5. Save as `ANTHROPIC_API_KEY`
 
-#### 5. Get X.com (Twitter) Credentials
+#### 5. (Optional) Get ScrapFly API Key for X.com Support
 
-1. Log into your X.com account (or create a test account)
-2. Note your username, password, and email
-3. Save as:
-   - `TWITTER_USERNAME`
-   - `TWITTER_PASSWORD`
-   - `TWITTER_EMAIL`
+X.com URLs are supported optionally via ScrapFly:
 
-**Warning:** twikit is an unofficial X.com client. Your account may be rate-limited or blocked. Use a dedicated test account if possible.
+1. Go to https://scrapfly.io
+2. Sign up for a free account (1000 requests/month included)
+3. Copy your API key from the dashboard
+4. Save as `SCRAPFLY_API_KEY`
+
+**Without ScrapFly:** Bot gracefully skips X.com URLs. GitHub and article URLs work fine.
+**With ScrapFly:** Full support for tweet/article fetching with automatic IP rotation and JavaScript rendering.
 
 #### 6. (Optional) Get GitHub Token
 
@@ -177,12 +178,12 @@ nano .env  # Edit with your values from manual prerequisites above
 Required values:
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_GROUP_ID`
-- `TWITTER_USERNAME`, `TWITTER_PASSWORD`, `TWITTER_EMAIL`
 - `ANTHROPIC_API_KEY`
 - `NOTION_API_KEY`, `NOTION_RND_PAGE_ID`, `NOTION_PROJECTS_PAGE_ID`
 
 Optional:
-- `GITHUB_TOKEN`
+- `SCRAPFLY_API_KEY` — for X.com tweet/article support
+- `GITHUB_TOKEN` — to increase API rate limits
 
 Save with `Ctrl+X`, then `Y`, then `Enter` (if using nano).
 
@@ -405,28 +406,23 @@ Common causes:
 
 ### Issue: X.com content not fetching
 
-**Known limitation:** Oracle Cloud datacenter IPs are blocked by X.com at the network level.
-Even with valid browser cookies, X.com returns 401/403. twikit login and cookie-based auth both fail from datacenter IPs.
+**Default behavior (no ScrapFly key):** X.com URLs are gracefully skipped with a user-friendly error message. Bot continues processing other URLs normally.
 
-**Current workaround:** X.com URLs are silently handled — the bot attempts fetch, fails gracefully, and reports a fetch error in Telegram. GitHub and generic article URLs work fine.
-
-**Permanent fix options (future work):**
-- Route X.com requests through a residential proxy (e.g. Bright Data, Oxylabs)
-- Use official Twitter API v2 (requires paid tier)
-- Run X.com fetcher on a separate non-datacenter machine
+**With ScrapFly enabled (SCRAPFLY_API_KEY set):** Check if API key is valid and has requests available.
 
 Check logs:
 ```bash
-sudo journalctl -u triage-bot | grep -i twitter
+sudo journalctl -u triage-bot | grep -i "twitter\|scrapfly"
 ```
 
-Common causes:
+Common causes and fixes:
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `401 Unauthorized` or `Could not fetch content` | Oracle Cloud IP blocked by X.com | See Known Limitation above |
-| `Login failed: incorrect credentials` | Wrong X.com username/password/email | Verify in `.env`. |
-| `Invalid URL format` | URL not recognized as Twitter | Must start with `https://x.com/` or `https://twitter.com/` |
+| Bot skips X.com URLs silently | `SCRAPFLY_API_KEY` not set | Set the env var to enable X.com support, or leave unset (default) |
+| `ScrapFly API error: invalid key` | API key wrong or expired | Verify key in `.env` at https://scrapfly.io/dashboard |
+| `ScrapFly returned 402` | Monthly request quota exceeded | Upgrade plan or wait for reset |
+| `ScrapFly returned 422` or `Invalid URL` | Malformed X.com URL | Must be `https://x.com/user/status/ID` or `https://x.com/i/article/...` |
 
 ### Issue: Claude API errors
 

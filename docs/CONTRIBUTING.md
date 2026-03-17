@@ -2,7 +2,7 @@
 
 This document covers local development setup, running the bot, testing procedures, and code style.
 
-**Last Updated:** 2026-03-11
+**Last Updated:** 2026-03-17
 
 ---
 
@@ -89,9 +89,11 @@ Now open `.env` and fill in your actual values. See `docs/ENV.md` for details.
 **At minimum, you need:**
 - `TELEGRAM_BOT_TOKEN` — from @BotFather
 - `TELEGRAM_GROUP_ID` — your private test group
-- `TWITTER_USERNAME`, `TWITTER_PASSWORD`, `TWITTER_EMAIL` — for X.com scraping
 - `ANTHROPIC_API_KEY` — from https://console.anthropic.com
 - `NOTION_API_KEY`, `NOTION_RND_PAGE_ID`, `NOTION_PROJECTS_PAGE_ID` — from Notion
+
+**Optional:**
+- `SCRAPFLY_API_KEY` — for X.com tweet/article support (free tier: 1000 req/month)
 
 <!-- END AUTO-GENERATED: Setup Instructions -->
 
@@ -337,7 +339,7 @@ knowledge-source-triage-bot/
 │   │   ├── handler.py            # Message handler + queue processor
 │   │   └── formatter.py          # Result formatting for Telegram
 │   ├── fetcher/
-│   │   ├── twitter.py            # X.com tweets/articles (twikit)
+│   │   ├── twitter.py            # X.com tweets/articles (ScrapFly HTTP API)
 │   │   ├── article.py            # Generic articles (httpx + BS4)
 │   │   ├── github.py             # GitHub repos (REST API)
 │   │   └── playwright.py         # Headless browser fallback

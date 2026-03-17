@@ -5,7 +5,7 @@ Personal Telegram bot that triages AI-related links shared in a group chat. Anal
 ## What it does
 
 1. Someone shares a link in a Telegram group (tweet, GitHub repo, article)
-2. Bot fetches the content (twikit / Playwright / GitHub API / httpx+BS4)
+2. Bot fetches the content (ScrapFly / Playwright / GitHub API / httpx+BS4)
 3. Claude runs a 3-phase analysis:
    - Phase 1: Credibility check (Haiku)
    - Phase 2: Value assessment (Haiku)
@@ -17,14 +17,14 @@ Personal Telegram bot that triages AI-related links shared in a group chat. Anal
 
 | URL pattern | Fetcher |
 |-------------|---------|
-| `x.com/*/status/*` | twikit (tweet text, author, followers) |
-| `x.com/i/article/*` | Playwright headless Chromium |
+| `x.com/*/status/*` | ScrapFly HTTP API (tweet text, author, followers) — optional, requires API key |
+| `x.com/i/article/*` | ScrapFly HTTP API — optional, requires API key |
 | `github.com/owner/repo` | GitHub REST API (README, stars, language) |
 | anything else | httpx + BS4, Playwright fallback |
 
 ## Tech stack
 
-Python 3.12 | python-telegram-bot v21 | twikit | Playwright | httpx + BeautifulSoup4 | anthropic | notion-client | loguru
+Python 3.12 | python-telegram-bot v21 | httpx | Playwright | BeautifulSoup4 | anthropic | notion-client | loguru
 
 ## CI/CD
 
@@ -50,7 +50,7 @@ Complete all manual setup steps before deploying:
 1. Create Telegram bot via @BotFather, add to a group, make it admin
 2. Get Anthropic API key from console.anthropic.com
 3. Get Notion API key, share your R&D and Projects pages with the integration
-4. Have X.com account credentials (username, email, password)
+4. (Optional) Get ScrapFly API key for X.com tweet/article support
 
 See [docs/RUNBOOK.md](docs/RUNBOOK.md) for step-by-step instructions.
 

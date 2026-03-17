@@ -2,7 +2,7 @@
 
 This document describes all environment variables required and optional for the AI Knowledge Source Triage Bot.
 
-**Last Updated:** 2026-03-11
+**Last Updated:** 2026-03-17
 
 <!-- AUTO-GENERATED -->
 
@@ -23,9 +23,6 @@ cp .env.example .env
 |----------|---------|--------|---------|
 | `TELEGRAM_BOT_TOKEN` | Telegram bot API token from @BotFather | String | `123456:ABCDefGH...` |
 | `TELEGRAM_GROUP_ID` | Telegram group chat ID (must be negative for groups) | Integer (negative) | `-100123456789` |
-| `TWITTER_USERNAME` | X.com (formerly Twitter) username for content scraping | String | `your_username` |
-| `TWITTER_PASSWORD` | X.com password (used by twikit client) | String | `your_password` |
-| `TWITTER_EMAIL` | X.com email address (used by twikit client) | String | `user@example.com` |
 | `ANTHROPIC_API_KEY` | Claude API key from Anthropic | String (starts with `sk-ant-`) | `sk-ant-...` |
 | `NOTION_API_KEY` | Notion integration API key | String (starts with `secret_`) | `secret_...` |
 | `NOTION_RND_PAGE_ID` | Notion page ID for R&D resources (parent of "AI Sources" database) | UUID | `316c70a6c8c8806c9bc4f3fd04213a89` |
@@ -37,6 +34,7 @@ cp .env.example .env
 
 | Variable | Purpose | Format | Example | Default |
 |----------|---------|--------|---------|---------|
+| `SCRAPFLY_API_KEY` | ScrapFly API key for X.com content scraping (enables tweet/article fetching) | String | `scp_...` | Not set (X.com URLs skipped gracefully) |
 | `GITHUB_TOKEN` | GitHub API token (increases rate limit from 60 to 5000 req/h) | String (starts with `ghp_`) | `ghp_...` | Not set (60 req/h limit) |
 
 ---
@@ -53,11 +51,15 @@ cp .env.example .env
    - In Telegram Desktop: right-click group → Copy Invite Link, extract the numeric ID, prepend `-100`
    - Via bot: send a message in the group, call Telegram API: `https://api.telegram.org/bot<TOKEN>/getUpdates`
 
-### X.com (Twitter)
+### X.com (Twitter) — Optional via ScrapFly
 
-1. Visit https://x.com and log in with your account
-2. Get your username, password, and registered email
-3. **Warning:** twikit is an unofficial client. X.com may block or rate-limit your account. Use a dedicated test account if possible.
+1. **Without ScrapFly (default):** Bot gracefully skips X.com URLs. No credentials needed.
+2. **With ScrapFly (recommended for X.com support):**
+   - Go to https://scrapfly.io
+   - Sign up for a free account (1000 requests/month)
+   - Copy your API key from the dashboard
+   - Save as `SCRAPFLY_API_KEY`
+   - ScrapFly handles IP rotation, CAPTCHA, and JavaScript rendering automatically
 
 ### Claude API
 
