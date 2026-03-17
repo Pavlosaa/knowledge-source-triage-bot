@@ -240,19 +240,22 @@ async def _fetch(
 
     # X.com
     x_type = detect_content_type(url)
-    if x_type == "tweet":
-        tweet_id = extract_tweet_id(url)
-        fetched_tweet = await fetch_tweet(
-            tweet_id or "",
-            username=config.twitter_username,
-            email=config.twitter_email,
-            password=config.twitter_password,
-        )
-        author = f"@{fetched_tweet.author_username}"
-        return fetched_tweet, "Tweet", author
+    if x_type in ("tweet", "article"):
+        if config.scrapfly_api_key is None:
+            raise RuntimeError(
+                "X.com fetching requires SCRAPFLY_API_KEY. Set it in .env to enable tweet/article analysis."
+            )
 
-    if x_type == "article":
-        fetched_article = await fetch_x_article(url)
+        if x_type == "tweet":
+            tweet_id = extract_tweet_id(url)
+            fetched_tweet = await fetch_tweet(
+                tweet_id or "",
+                api_key=config.scrapfly_api_key,
+            )
+            author = f"@{fetched_tweet.author_username}"
+            return fetched_tweet, "Tweet", author
+
+        fetched_article = await fetch_x_article(url, api_key=config.scrapfly_api_key)
         return fetched_article, "X Article", fetched_article.author_name
 
     # Generic article / web page
