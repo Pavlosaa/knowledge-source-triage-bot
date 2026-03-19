@@ -22,9 +22,9 @@ class TweetContent:
     tweet_id: str
     author_name: str
     author_username: str
-    follower_count: int
-    is_verified: bool
     text: str
+    follower_count: int | None = None  # None = not available from HTML
+    is_verified: bool | None = None  # None = not available from HTML
     embedded_urls: list[str] = field(default_factory=list)
 
 
@@ -117,8 +117,6 @@ def _parse_tweet_html(html: str, tweet_id: str, url: str) -> TweetContent:
         tweet_id=tweet_id,
         author_name=author_name,
         author_username=author_username,
-        follower_count=0,
-        is_verified=False,
         text=text,
         embedded_urls=embedded_urls,
     )

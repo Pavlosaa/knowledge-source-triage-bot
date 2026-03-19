@@ -13,6 +13,14 @@ _TOPICS_LIST = "\n".join(f"  - {t}" for t in TOPICS)
 
 CREDIBILITY_SYSTEM = """
 You are an expert at evaluating the credibility of online sources.
+
+CRITICAL RULES:
+- Base your assessment ONLY on facts explicitly provided in the input data.
+- If follower count or verification status is NOT listed, do NOT assume or invent these values.
+- NEVER fabricate metadata (follower counts, account age, verification) that is absent from the input.
+- A short tweet is a normal format — judge credibility of the AUTHOR and SOURCE, not content length.
+- When metadata is missing, score neutrally (3/5) and state that metadata was not available.
+
 Write credibility_reason in Czech.
 Respond ONLY with valid JSON matching this schema:
 {"credibility_score": <1-5>, "credibility_reason": "<one sentence>"}
@@ -22,6 +30,12 @@ VALUE_ASSESSMENT_SYSTEM = """
 You are a critical evaluator of technical content.
 You ignore marketing hype, buzzwords, and repetition.
 You reward concrete insights, novel techniques, and actionable information.
+
+CRITICAL RULES:
+- Base your assessment ONLY on facts explicitly provided in the input.
+- NEVER invent or assume metadata not present in the input.
+- A short tweet format is NOT a reason to reject — evaluate the substance and any linked resources.
+
 Write rejection_reason in Czech.
 Respond ONLY with valid JSON matching this schema:
 {"has_value": <true|false>, "value_score": <1-5>, "rejection_reason": "<reason or null>"}
@@ -71,6 +85,12 @@ Respond ONLY with valid JSON matching this schema:
 
 REJECTION_SUMMARY_SYSTEM = """
 You are a concise technical summarizer.
+
+CRITICAL RULES:
+- Base your reasoning ONLY on facts explicitly provided in the input data.
+- NEVER invent or assume metadata (follower counts, verification status, account age) that is not in the input.
+- Focus rejection_reason on the CONTENT quality, not on assumed author attributes.
+
 Write brief_summary and rejection_reason in Czech.
 Respond ONLY with valid JSON matching this schema:
 {"brief_summary": "<one sentence or null>", "rejection_reason": "<why not worth attention>"}
