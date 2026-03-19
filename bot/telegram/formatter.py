@@ -85,8 +85,17 @@ def _format_rejected(result: AnalysisResult, original_url: str) -> str:
     lines: list[str] = [
         f'🔗 <a href="{original_url}">Původní zdroj</a>',
         "",
-        "❌ <b>Nízká hodnota</b>",
     ]
+
+    if result.fetch_failed:
+        lines.append("⚠️ <b>Zdroj nedostupný</b>")
+        lines.append("")
+        if result.rejection_reason:
+            reason = html.escape(result.rejection_reason[:300])
+            lines.append(f"🚫 <b>Důvod:</b> {reason}")
+        return "\n".join(lines)
+
+    lines.append("❌ <b>Nízká hodnota</b>")
 
     if result.brief_summary:
         lines.append("")

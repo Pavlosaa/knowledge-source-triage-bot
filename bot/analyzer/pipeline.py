@@ -81,6 +81,9 @@ class AnalysisResult:
     # Dedup: set when URL already exists in Notion
     duplicate_of: dict | None = None
 
+    # True when fetcher failed completely (content unavailable)
+    fetch_failed: bool = False
+
 
 async def run_pipeline(
     url: str,
@@ -112,7 +115,8 @@ async def run_pipeline(
         fetched, content_type, author = await _fetch(url, config)
     except Exception as exc:
         logger.error(f"Fetch failed for {url}: {exc}")
-        result.rejection_reason = f"Could not fetch content: {exc}"
+        result.rejection_reason = f"Nepodařilo se získat data ze zdroje: {exc}"
+        result.fetch_failed = True
         _log_summary(result, url, _started_at)
         return result
 
@@ -271,12 +275,14 @@ async def _fetch(
 def _build_content_text(fetched: Any) -> str:
     if isinstance(fetched, TweetContent):
         lines = [
+            "[SYSTEM-PROVIDED METADATA — use ONLY these facts, do NOT invent missing fields]",
             f"Author: @{fetched.author_username} ({fetched.author_name})",
-            f"Followers: {fetched.follower_count:,}",
-            f"Verified: {fetched.is_verified}",
-            "",
-            fetched.text,
         ]
+        if fetched.follower_count is not None:
+            lines.append(f"Followers: {fetched.follower_count:,}")
+        if fetched.is_verified is not None:
+            lines.append(f"Verified: {fetched.is_verified}")
+        lines += ["", fetched.text]
         if fetched.embedded_urls:
             lines += ["", "Embedded URLs:", *fetched.embedded_urls]
         return "\n".join(lines)
