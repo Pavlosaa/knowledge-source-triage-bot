@@ -138,8 +138,8 @@ class TestFetchTweet:
         assert result.tweet_id == "123456"
         assert "test tweet" in result.text
         assert result.embedded_urls == ["https://example.com/foo"]
-        assert result.follower_count == 0
-        assert result.is_verified is False
+        assert result.follower_count is None
+        assert result.is_verified is None
 
     async def test_scrapfly_http_error(self) -> None:
         mock_client = AsyncMock()
