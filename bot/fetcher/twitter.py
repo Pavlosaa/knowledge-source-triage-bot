@@ -70,18 +70,41 @@ async def _scrapfly_fetch(url: str, api_key: str) -> str:
         "render_js": "true",
         "country": "us",
     }
+    logger.info(f"ScrapFly request: url={url}")
     async with httpx.AsyncClient(timeout=_SCRAPFLY_TIMEOUT) as client:
         response = await client.get(_SCRAPFLY_API, params=params)
 
+    logger.info(f"ScrapFly response: status={response.status_code} content_length={len(response.content)}")
+
     if response.status_code != 200:
+        logger.error(f"ScrapFly error body: {response.text[:500]}")
         raise ScrapFlyError(f"ScrapFly returned {response.status_code}: {response.text[:200]}")
 
     data = response.json()
     result = data.get("result", {})
+
+    # Log ScrapFly result metadata (everything except the HTML content itself)
+    log_url = result.get("log_url")
+    status = result.get("status")
+    status_code = result.get("status_code")
+    success = result.get("success")
+    duration = result.get("duration")
+    fmt = result.get("format")
+    error = result.get("error")
+    logger.info(
+        f"ScrapFly result: status={status} success={success} "
+        f"upstream_status={status_code} duration={duration} format={fmt} "
+        f"log_url={log_url}"
+    )
+    if error:
+        logger.warning(f"ScrapFly result.error: {error}")
+
     html: str = result.get("content", "")
     if not html:
+        logger.error(f"ScrapFly returned empty content. Full result keys: {list(result.keys())}")
         raise ScrapFlyError("ScrapFly returned empty content")
 
+    logger.debug(f"ScrapFly HTML preview (first 500 chars): {html[:500]}")
     return html
 
 
@@ -113,13 +136,19 @@ def _parse_tweet_html(html: str, tweet_id: str, url: str) -> TweetContent:
 
     embedded_urls = _URL_RE.findall(text)
 
-    return TweetContent(
+    tweet = TweetContent(
         tweet_id=tweet_id,
         author_name=author_name,
         author_username=author_username,
         text=text,
         embedded_urls=embedded_urls,
     )
+    logger.info(
+        f"Parsed tweet: author=@{author_username} ({author_name}) "
+        f"text_len={len(text)} embedded_urls={len(embedded_urls)} "
+        f"followers={tweet.follower_count} verified={tweet.is_verified}"
+    )
+    return tweet
 
 
 async def fetch_tweet(tweet_id: str, api_key: str) -> TweetContent:
