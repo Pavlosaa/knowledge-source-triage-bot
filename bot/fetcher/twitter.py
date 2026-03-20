@@ -74,10 +74,7 @@ async def _scrapfly_fetch(url: str, api_key: str) -> str:
     async with httpx.AsyncClient(timeout=_SCRAPFLY_TIMEOUT) as client:
         response = await client.get(_SCRAPFLY_API, params=params)
 
-    logger.info(
-        f"ScrapFly response: status={response.status_code} "
-        f"content_length={len(response.content)}"
-    )
+    logger.info(f"ScrapFly response: status={response.status_code} content_length={len(response.content)}")
 
     if response.status_code != 200:
         logger.error(f"ScrapFly error body: {response.text[:500]}")
