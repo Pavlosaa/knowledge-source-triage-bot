@@ -5,7 +5,7 @@
 **Project:** AI Knowledge Source Triage Bot
 **Type:** Python 3.12 async application
 **Entry Point:** `/bot/main.py`
-**Updated:** 2026-03-17
+**Updated:** 2026-03-20
 
 ---
 
@@ -42,8 +42,8 @@
 │    ├─ key_principles, use_cases, discovery_score, tags          │
 │    ├─ project_recommendations, notion_url                       │
 │    ├─ brief_summary, rejection_reason (if rejected)             │
-│    ├─ topic, credibility_score                                  │
-│    └─ credibility_reason                                        │
+│    ├─ topic, credibility_score, credibility_reason              │
+│    └─ fetch_failed (True when fetcher fails completely)         │
 └──────────┬───────────────────────┬────────────────────┬─────────┘
            │                       │                    │
     FETCH  │              ANALYZE  │         WRITE      │
@@ -86,7 +86,7 @@
    │
    ├─ FETCH content
    │  ├─ x.com/*/status/* → ScrapFly API → BS4 parse
-   │  │  └─ [TweetContent: author, text, verified, followers]
+   │  │  └─ [TweetContent: author, text, followers?, verified?]
    │  │
    │  ├─ x.com/i/article/* → ScrapFly API → BS4 parse
    │  │  └─ [ArticleContent: title, body]

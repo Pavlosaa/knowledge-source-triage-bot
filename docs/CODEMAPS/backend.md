@@ -1,8 +1,8 @@
-<!-- Generated: 2026-03-02 | Files scanned: 18 | Token estimate: ~720 -->
+<!-- Generated: 2026-03-02 | Files scanned: 18 | Token estimate: ~750 -->
 
 # Backend Module Codemap
 
-**Files:** 18 Python modules | **Entry:** main.py | **Updated:** 2026-03-17
+**Files:** 18 Python modules | **Entry:** main.py | **Updated:** 2026-03-20
 
 ---
 
@@ -100,9 +100,13 @@ _format_valuable(result, original_url) → str
 
 _format_rejected(result, original_url) → str
   ├─ 🔗 Original source link
-  ├─ ❌ Nízká hodnota
-  ├─ 💭 Shrnutí: brief_summary
-  └─ 🚫 Proč: rejection_reason
+  ├─ if fetch_failed:
+  │  ├─ ⚠️ Zdroj nedostupný
+  │  └─ 🚫 Důvod: rejection_reason
+  └─ else:
+     ├─ ❌ Nízká hodnota
+     ├─ 💭 Shrnutí: brief_summary
+     └─ 🚫 Proč: rejection_reason
 
 _stars(score: int) → str
   └─ _SCORE_STARS: {1: "★☆☆☆☆", 2: "★★☆☆☆", ..., 5: "★★★★★"}
@@ -122,9 +126,9 @@ class TweetContent:
   tweet_id: str
   author_name: str
   author_username: str
-  follower_count: int
-  is_verified: bool
   text: str
+  follower_count: int | None = None   # None = not available from HTML
+  is_verified: bool | None = None     # None = not available from HTML
   embedded_urls: list[str]
 
 @dataclass
@@ -224,15 +228,20 @@ class AnalysisResult:
   credibility_score: int | None = None
   credibility_reason: str | None = None
 
-async run_pipeline(url: str) → AnalysisResult
-  ├─ TODO: Fetcher dispatch
-  ├─ TODO: Phase 1 (Credibility, Haiku)
-  ├─ TODO: Phase 2 (Value Check, Haiku)
-  ├─ TODO: Phase 3A/B (Full Analysis Sonnet / Rejection Haiku)
-  └─ TODO: Notion Writer
+  # Fetch failure
+  fetch_failed: bool = False          # True when fetcher failed completely
+
+async run_pipeline(url, config, writer, projects) → AnalysisResult
+  ├─ Dedup check (find_existing)
+  ├─ Fetch content (_fetch dispatcher)
+  ├─ Phase 1: Credibility (Haiku, max 150 tokens)
+  ├─ Phase 2: Value Check (Haiku, max 150 tokens)
+  ├─ Phase 3A: Full Analysis (Sonnet, max 2000 tokens) if has_value
+  ├─ Phase 3B: Rejection Summary (Haiku, max 200 tokens) if !has_value
+  └─ Notion Writer (if has_value)
 ```
 
-**Planned flow:**
+**Flow:**
 1. Detect content type (x.com, github, article)
 2. Call appropriate fetcher
 3. Phase 1: Claude Haiku credibility check
