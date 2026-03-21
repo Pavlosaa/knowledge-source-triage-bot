@@ -1,4 +1,4 @@
-<!-- Generated: 2026-03-02 | Updated: 2026-03-17 -->
+<!-- Generated: 2026-03-02 | Updated: 2026-03-20 -->
 
 # AI Knowledge Source Triage Bot — Codebase Overview
 
@@ -259,10 +259,10 @@ Telegram Reply
 
 ## Documentation Freshness
 
-- **Generated:** 2026-03-02, **Updated:** 2026-03-11
+- **Generated:** 2026-03-02, **Updated:** 2026-03-20
 - **Architecture matches:** Yes (verified against live deployment)
 - **All file paths verified:** Yes
-- **Next update:** When integration tests and remaining fetcher tests are implemented
+- **Last change:** PR #5 — metadata fix (optional follower_count/is_verified), prompt hardening, fetch_failed UX
 
 ---
 

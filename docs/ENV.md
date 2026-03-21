@@ -2,7 +2,7 @@
 
 This document describes all environment variables required and optional for the AI Knowledge Source Triage Bot.
 
-**Last Updated:** 2026-03-17
+**Last Updated:** 2026-03-20
 
 <!-- AUTO-GENERATED -->
 

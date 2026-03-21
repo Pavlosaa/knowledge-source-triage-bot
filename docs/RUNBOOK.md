@@ -2,7 +2,7 @@
 
 This document covers production deployment, systemd service management, logging, troubleshooting, and manual prerequisites for the AI Knowledge Source Triage Bot.
 
-**Last Updated:** 2026-03-17
+**Last Updated:** 2026-03-20
 
 ---
 
@@ -401,7 +401,7 @@ Common causes:
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | `"Configuration loaded"` then no messages | Bot not listening to correct group | Verify `TELEGRAM_GROUP_ID` in `.env` matches your group. Get correct ID from BotFather. |
-| Message logged but no Notion page created | Pipeline not implemented yet | This is expected — fetchers and pipeline are TODO. Check `tasks/todo.md`. |
+| Message logged but no Notion page created | Claude analysis rejected the content or Notion API error | Check pipeline logs for rejection reason. Verify `NOTION_API_KEY` and page IDs. |
 | `Notion API error: invalid_page_id` | `NOTION_RND_PAGE_ID` wrong | Get correct ID from https://www.notion.so, copy from URL. |
 
 ### Issue: X.com content not fetching
@@ -465,9 +465,12 @@ Push to `main` triggers GitHub Actions CI pipeline. After all checks pass (lint,
 ```bash
 cd ~/knowledge-source-triage-bot
 git pull origin main
+source .venv/bin/activate
 pip install -r requirements.txt
 sudo systemctl restart triage-bot.service
 ```
+
+Manual trigger is also available via `workflow_dispatch` in GitHub Actions UI.
 
 **Required GitHub Secrets:** `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`
 

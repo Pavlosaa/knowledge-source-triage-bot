@@ -1,8 +1,8 @@
-<!-- Generated: 2026-03-02 | Files scanned: 18 | Token estimate: ~580 -->
+<!-- Generated: 2026-03-02 | Files scanned: 18 | Token estimate: ~620 -->
 
 # Data & Configuration Codemap
 
-**Files:** config.py, prompts.py, writer.py, projects.py, twitter.py | **Updated:** 2026-03-17
+**Files:** config.py, prompts.py, writer.py, projects.py, twitter.py | **Updated:** 2026-03-20
 
 ---
 
@@ -117,13 +117,20 @@ URL
 **Input:**
 - Author name
 - Author username
-- Follower count
-- Verified status (for tweets)
+- Follower count (if available, may be None)
+- Verified status (if available, may be None)
 - Text snippet
 
 **System Prompt:** `CREDIBILITY_SYSTEM` (bot/analyzer/prompts.py)
 ```
 You are an expert at evaluating credibility of online sources.
+
+CRITICAL RULES:
+- Base assessment ONLY on facts explicitly provided in input.
+- If follower count or verification status is NOT listed, do NOT assume/invent.
+- NEVER fabricate metadata absent from the input.
+- When metadata missing, score neutrally (3/5).
+
 Respond ONLY with valid JSON matching:
 {"credibility_score": <1-5>, "credibility_reason": "<one sentence>"}
 ```
@@ -295,13 +302,13 @@ H2: 🔗 Source
 ```python
 @dataclass
 class TweetContent:
-  tweet_id: str           # numeric ID from URL
-  author_name: str        # display name
-  author_username: str    # @username
-  follower_count: int     # follower count
-  is_verified: bool       # blue check
-  text: str               # full tweet text
-  embedded_urls: list[str] # URLs mentioned in tweet
+  tweet_id: str                    # numeric ID from URL
+  author_name: str                 # display name
+  author_username: str             # @username
+  text: str                        # full tweet text
+  follower_count: int | None = None  # None = not available from HTML
+  is_verified: bool | None = None    # None = not available from HTML
+  embedded_urls: list[str]         # URLs mentioned in tweet
 ```
 
 ### Article Content (bot/fetcher/article.py, twitter.py)
@@ -412,6 +419,16 @@ Lock: asyncio.Lock() (concurrent requests safe)
 💭 <b>Shrnutí:</b> {brief_summary}
 
 🚫 <b>Proč:</b> {rejection_reason}
+```
+
+### Fetch Failed Source
+
+```
+🔗 <a href="https://original.url">Původní zdroj</a>
+
+⚠️ <b>Zdroj nedostupný</b>
+
+🚫 <b>Důvod:</b> {rejection_reason}
 ```
 
 ### Error Response

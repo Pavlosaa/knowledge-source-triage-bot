@@ -2,7 +2,7 @@
 
 This document covers local development setup, running the bot, testing procedures, and code style.
 
-**Last Updated:** 2026-03-17
+**Last Updated:** 2026-03-20
 
 ---
 
@@ -262,6 +262,9 @@ pytest tests/test_config.py -v
 Coverage goal: **80%+**
 
 Test fixtures are in `tests/conftest.py` (mock env vars, etc.).
+
+**Existing test files:**
+- `tests/test_twitter.py` — 14 unit tests for X.com fetcher (94% coverage)
 
 ### Debugging
 

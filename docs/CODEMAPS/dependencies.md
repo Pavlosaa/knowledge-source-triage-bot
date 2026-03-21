@@ -2,7 +2,7 @@
 
 # External Dependencies & Services Codemap
 
-**Deps scanned:** 18 files | **External services:** 6 | **Python packages:** 16 | **Updated:** 2026-03-17
+**Deps scanned:** 18 files | **External services:** 6 | **Python packages:** 16 | **Updated:** 2026-03-20
 
 ---
 
@@ -191,8 +191,8 @@ response = await client.blocks.children.list(block_id=projects_page_id)
 # Tweet: x.com/@user/status/123456789
 detect_content_type(url) → "tweet"
 fetch_tweet(tweet_id, scrapfly_api_key) → TweetContent(
-  tweet_id, author_name, author_username, follower_count,
-  is_verified, text, embedded_urls
+  tweet_id, author_name, author_username, text,
+  follower_count?, is_verified?, embedded_urls
 )
 
 # X Article: x.com/i/article/123456789
@@ -383,8 +383,8 @@ Async dependencies: python-telegram-bot, notion-client, anthropic, httpx, playwr
      ├─→ https://api.notion.com
      │   └─ Database search, record creation, project context
      │
-     ├─→ https://x.com (twikit)
-     │   └─ Tweet/article fetching
+     ├─→ https://api.scrapfly.io (ScrapFly proxy)
+     │   └─ Tweet/article fetching (render_js + residential proxy)
      │
      ├─→ https://api.github.com
      │   └─ Repository metadata & README

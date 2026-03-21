@@ -72,11 +72,10 @@
 - Notion "AI Sources" database auto-created on first run
 - Structured log line per URL: `url | type | has_value | score | duration_ms`
 
-**Known limitation — X.com / Twitter:**
-- Oracle Cloud datacenter IPs are blocked by X.com at network level
-- twikit login fails (Cloudflare), browser cookies also return 401
-- Bot gracefully reports fetch error for tweet URLs
-- Fix: residential proxy or Twitter API v2 (paid) — **not yet implemented**
+**X.com / Twitter — RESOLVED (2026-03-17):**
+- ScrapFly API replaces twikit — residential proxy + JS rendering handled by ScrapFly
+- Free tier 1000 req/month, optional `SCRAPFLY_API_KEY` env var
+- Metadata (followers, verified) reported as `None` when unavailable (no hallucination)
 
 ## ✅ Phase 8: CI/CD Pipeline — DONE (2026-03-11)
 - [x] Fix .gitignore — add vault/, docs/tmp/, .claude/, reports/ (prevent secret leaks)
@@ -94,10 +93,19 @@
 - [x] **Topic jako multiselect** — select→multi_select (1-3 topics per record)
 - [x] **Lepší Title** — strict rules: no slugs, no marketing tone, Czech descriptive, max 70 chars
 
+## ✅ Phase 10: ScrapFly Integration & Metadata Fix — DONE (2026-03-20)
+- [x] Replace twikit with ScrapFly HTTP API for X.com fetching (PR #3)
+- [x] Fix hardcoded `follower_count=0` / `is_verified=False` → `None` (PR #5)
+- [x] Harden Claude prompts — CRITICAL RULES against metadata fabrication (PR #5)
+- [x] Add `fetch_failed` UX path in Telegram formatter (PR #5)
+- [x] Add ScrapFly debug logging (PR #5)
+- [x] Fix deploy.yml — add venv activation before `pip install` (PEP 668)
+- [x] Add `workflow_dispatch` trigger to deploy.yml (PR #4)
+
 ## ⏳ Remaining / Future Work
 
-### Infrastruktura / testy
+### Testy (priorita: střední)
 
-- [ ] **X.com fetching via ScrapFly** — nahradit twikit ScrapFly HTTP klientem, `SCRAPFLY_KEY` jako optional env var. Free tier 1000 req/měsíc. twikit odebrat (Oracle Cloud IPs blokované). **Plán:** `.claude/plans/calm-jumping-wirth.md`
-- [ ] Unit tests pro fetchers (mocked HTTP)
-- [ ] Unit tests pro pipeline (mocked Claude responses)
+- [ ] Unit tests pro fetchers — article.py, github.py, playwright.py (mocked HTTP)
+- [ ] Unit tests pro pipeline — mocked Claude responses, all 4 phases
+- [ ] Integration test — full pipeline with mocked fetcher + Claude + Notion
