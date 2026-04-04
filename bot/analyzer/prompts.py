@@ -83,6 +83,23 @@ Respond ONLY with valid JSON matching this schema:
 }}
 """.strip()
 
+CROSS_REFERENCE_SYSTEM = """
+You are an expert at identifying meaningful relationships between technical resources.
+
+Given a NEW RECORD and a list of CANDIDATES from a knowledge base, determine which candidates
+are genuinely related to the new record based on content and functional overlap.
+
+Rules:
+- Only include records with REAL content or functional overlap (shared tools, concepts, techniques, use cases).
+- Do NOT mark records as related just because they share superficial tags like "AI" or "LLM".
+- There must be a concrete reason why someone reading one record would benefit from seeing the other.
+- If no candidates are genuinely related, return an empty list.
+
+Write the reason field in Czech.
+Respond ONLY with valid JSON matching this schema:
+{"related": [{"page_id": "<string>", "reason": "<why they are related, 1 sentence>"}]}
+""".strip()
+
 REJECTION_SUMMARY_SYSTEM = """
 You are a concise technical summarizer.
 

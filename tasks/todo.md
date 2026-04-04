@@ -104,27 +104,33 @@
 
 ## ⏳ Remaining / Future Work
 
-### Phase 11: Cross-referencing between records (priorita: střední)
+### F1: Cross-referencing between records
 
-Automatické hledání obsahových/funkčních souvislostí mezi záznamy v Notion DB.
-Při vytvoření nového záznamu se prohledají existující záznamy a zapíší N:N vztahy.
+**Priorita:** Medium | **Zaznamenáno:** 2026-04-04
 
-**Matching strategie:** Hybrid — nejdřív filtrovat kandidáty podle sdílených tags/topics, pak nechat Claude posoudit sémantickou relevanci z užšího seznamu.
+Automatické N:N cross-referencing mezi záznamy v Notion "AI Sources" DB. Při vytvoření nového záznamu se prohledají existující záznamy podle sdílených tags/topics, Claude (Haiku) sémanticky ověří relevanci, a zapíší se obousměrné Notion Relation linky. Plus jednorázový backfill pro existující data. Detailní plán: `docs/plans/2026-04-04-phase-11-cross-referencing.md`.
 
-**Storage:** Notion Relation property (self-referencing relation v rámci AI Sources DB). Obousměrné propojení — Notion automaticky zobrazí zpětné odkazy.
+**Kroky:**
+- [ ] Step 1: Přidat "Related Sources" Relation property do DB schema (`writer.py` — `_ensure_relation_property()`, idempotent)
+- [ ] Step 2: Nový modul `bot/notion/references.py` — `find_related_sources()` + `write_relations()`
+- [ ] Step 3: Claude prompt `CROSS_REFERENCE_SYSTEM` v `prompts.py` (Haiku, sémantické ověření kandidátů)
+- [ ] Step 4: Integrace do `pipeline.py` — step 7 po vytvoření Notion záznamu
+- [ ] Step 5: Backfill script `scripts/backfill_references.py` (N×N matching, rate-limited, dedup)
+- [ ] Step 6: Unit testy `tests/test_references.py` (filtering, prompt, relations, backfill dedup)
 
-**Trigger:** Automaticky při každém novém záznamu + jednorázový backfill příkaz pro existující data.
+### F2: Extrakce GitHub odkazů z článků/postů
 
-- [ ] Add "Related Sources" Relation property to AI Sources DB schema (`writer.py:_create_database`)
-- [ ] `bot/notion/references.py` — modul pro cross-referencing logic:
-  - Query existing records, filter candidates by tag/topic overlap (min 2 shared tags OR 1 shared topic)
-  - Build short summaries of candidates (title + core_summary + tags)
-  - Claude call (Haiku): posoudit relevanci kandidátů vůči novému záznamu, vrátit list related page IDs
-  - Write Relation property na nový záznam + update zpětné relace na existující záznamy
-- [ ] Integrate cross-referencing into `pipeline.py:run_pipeline()` — after Notion page creation (step 6)
-- [ ] Backfill script (`scripts/backfill_references.py`): projít všechny existující záznamy, spustit matching N×N, zapsat relace
-- [ ] Handle DB migration — add Relation property to existing DB if missing (idempotent)
-- [ ] Unit tests pro references.py — mocked Notion queries + Claude responses
+**Priorita:** Medium | **Zaznamenáno:** 2026-04-04
+
+Pokud analyzovaný článek nebo post obsahuje odkaz(y) na GitHub repo, extrahovat je a každé repo analyzovat jako samostatný vstup pro bota. Při více GitHub odkazech vytvořit více záznamů v Notion. Pokud spolu souvisejí, automaticky je propojit přes cross-referencing (F1). Zdrojový článek použít jako kontext pro analýzu repa, pokud je relevantní.
+
+**Kroky:**
+- [ ] Extrakce GitHub URL z obsahu článku/postu (regex/parser po fetchi)
+- [ ] Pro každý nalezený GitHub odkaz spustit existující GitHub fetcher + pipeline
+- [ ] Předat kontext zdrojového článku do analýzy repa (obohacení Phase 3A promptu)
+- [ ] Vytvořit Notion záznam pro každé repo zvlášť
+- [ ] Cross-referencovat vzniklé záznamy navzájem + se zdrojovým článkem (závisí na F1)
+- [ ] Unit testy — extrakce odkazů, multi-repo pipeline, kontext forwarding
 
 ### Testy (priorita: střední)
 

@@ -50,6 +50,16 @@ class NotionWriter:
         self._parent_page_id = rnd_page_id
         self._database_id: str | None = None
 
+    @property
+    def client(self) -> AsyncClient:
+        """Expose the Notion client for cross-referencing."""
+        return self._client
+
+    @property
+    def database_id(self) -> str | None:
+        """Expose the database ID for cross-referencing."""
+        return self._database_id
+
     async def find_existing(self, source_url: str) -> dict | None:
         """
         Check if a record with this Source URL already exists in the database.
@@ -77,16 +87,17 @@ class NotionWriter:
             logger.warning(f"Dedup query failed: {exc}")
             return None
 
-    async def create_source_page(self, result: AnalysisResult, source_url: str) -> str:
+    async def create_source_page(self, result: AnalysisResult, source_url: str) -> tuple[str, str]:
         """
         Create a Notion database record for the analyzed source.
-        Returns the URL of the newly created page.
+        Returns (page_url, page_id) of the newly created page.
         """
         db_id = await self._get_or_create_database()
         page = await self._create_record(db_id, result, source_url)
         url = str(page["url"])
+        page_id = str(page["id"])
         logger.info(f"Created Notion record: {url}")
-        return url
+        return url, page_id
 
     # ------------------------------------------------------------------
     # Database management
@@ -101,6 +112,7 @@ class NotionWriter:
             logger.info(f'Database "{DB_NAME}" not found — creating it')
             db_id = await self._create_database()
 
+        await self._ensure_relation_property(db_id)
         self._database_id = db_id
         return db_id
 
@@ -142,6 +154,27 @@ class NotionWriter:
         )
         logger.info(f'Created database "{DB_NAME}": {db["id"]}')
         return str(db["id"])
+
+    async def _ensure_relation_property(self, db_id: str) -> None:
+        """Add self-referencing 'Related Sources' relation property (idempotent)."""
+        try:
+            await self._client.databases.update(
+                database_id=db_id,
+                properties={
+                    "Related Sources": {
+                        "relation": {
+                            "database_id": db_id,
+                            "type": "dual_property",
+                            "dual_property": {
+                                "synced_property_name": "Related by",
+                            },
+                        },
+                    },
+                },
+            )
+            logger.debug("Ensured 'Related Sources' relation property exists")
+        except Exception as exc:
+            logger.warning(f"Failed to ensure relation property: {exc}")
 
     # ------------------------------------------------------------------
     # Record creation
