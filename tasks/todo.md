@@ -104,6 +104,28 @@
 
 ## ⏳ Remaining / Future Work
 
+### Phase 11: Cross-referencing between records (priorita: střední)
+
+Automatické hledání obsahových/funkčních souvislostí mezi záznamy v Notion DB.
+Při vytvoření nového záznamu se prohledají existující záznamy a zapíší N:N vztahy.
+
+**Matching strategie:** Hybrid — nejdřív filtrovat kandidáty podle sdílených tags/topics, pak nechat Claude posoudit sémantickou relevanci z užšího seznamu.
+
+**Storage:** Notion Relation property (self-referencing relation v rámci AI Sources DB). Obousměrné propojení — Notion automaticky zobrazí zpětné odkazy.
+
+**Trigger:** Automaticky při každém novém záznamu + jednorázový backfill příkaz pro existující data.
+
+- [ ] Add "Related Sources" Relation property to AI Sources DB schema (`writer.py:_create_database`)
+- [ ] `bot/notion/references.py` — modul pro cross-referencing logic:
+  - Query existing records, filter candidates by tag/topic overlap (min 2 shared tags OR 1 shared topic)
+  - Build short summaries of candidates (title + core_summary + tags)
+  - Claude call (Haiku): posoudit relevanci kandidátů vůči novému záznamu, vrátit list related page IDs
+  - Write Relation property na nový záznam + update zpětné relace na existující záznamy
+- [ ] Integrate cross-referencing into `pipeline.py:run_pipeline()` — after Notion page creation (step 6)
+- [ ] Backfill script (`scripts/backfill_references.py`): projít všechny existující záznamy, spustit matching N×N, zapsat relace
+- [ ] Handle DB migration — add Relation property to existing DB if missing (idempotent)
+- [ ] Unit tests pro references.py — mocked Notion queries + Claude responses
+
 ### Testy (priorita: střední)
 
 - [ ] Unit tests pro fetchers — article.py, github.py, playwright.py (mocked HTTP)
