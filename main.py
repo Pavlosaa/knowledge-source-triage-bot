@@ -8,11 +8,11 @@ from loguru import logger
 from telegram.ext import ApplicationBuilder, filters
 from telegram.ext import MessageHandler as TGMessageHandler
 
-from bot.analyzer.pipeline import run_pipeline
+from bot.analyzer.pipeline import run_pipeline_with_discovery
 from bot.config import load_config
 from bot.notion.projects import ProjectsCache
 from bot.notion.writer import NotionWriter
-from bot.telegram.formatter import format_result
+from bot.telegram.formatter import format_results
 from bot.telegram.handler import MessageHandler, process_queue
 
 # --- Logging setup ---
@@ -35,7 +35,7 @@ async def main() -> None:
         projects_page_id=config.notion_projects_page_id,
     )
 
-    pipeline_fn = functools.partial(run_pipeline, config=config, writer=writer, projects=projects)
+    pipeline_fn = functools.partial(run_pipeline_with_discovery, config=config, writer=writer, projects=projects)
 
     queue: asyncio.Queue = asyncio.Queue()
     handler = MessageHandler(queue)
@@ -59,7 +59,7 @@ async def main() -> None:
             process_queue(
                 queue=queue,
                 pipeline_fn=pipeline_fn,
-                format_fn=format_result,
+                format_fn=format_results,
             )
         )
 

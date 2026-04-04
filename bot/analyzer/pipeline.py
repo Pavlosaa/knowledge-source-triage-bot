@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 import anthropic
 from loguru import logger
 
+from bot.analyzer.extractor import extract_github_urls
 from bot.analyzer.json_utils import strip_markdown_json
 from bot.analyzer.prompts import (
     CREDIBILITY_SYSTEM,
@@ -86,12 +87,19 @@ class AnalysisResult:
     # True when fetcher failed completely (content unavailable)
     fetch_failed: bool = False
 
+    # Page ID for cross-referencing (set after Notion write)
+    notion_page_id: str | None = None
+
+    # Transient: fetched content for post-fetch extraction (not persisted/displayed)
+    fetched_content: Any = field(default=None, repr=False)
+
 
 async def run_pipeline(
     url: str,
     config: Config,
     writer: NotionWriter,
     projects: ProjectsCache,
+    source_context: str | None = None,
 ) -> AnalysisResult:
     """
     Full analysis pipeline:
@@ -124,6 +132,7 @@ async def run_pipeline(
 
     result.content_type = content_type
     result.author = author
+    result.fetched_content = fetched
     content_text = _build_content_text(fetched)
 
     # --- 2. Phase 1: Credibility (Haiku) ---
@@ -184,6 +193,8 @@ async def run_pipeline(
     # --- 5. Phase 3A: Full analysis (Sonnet) ---
     project_context = await projects.get_context()
     phase3_user = f"{content_text[:_PHASE3_CONTENT_LIMIT]}\n\n{project_context}"
+    if source_context:
+        phase3_user += f"\n\n[DISCOVERY CONTEXT — this repo was found in the following source:]\n{source_context}"
 
     try:
         analysis = await _call_claude(
@@ -219,6 +230,7 @@ async def run_pipeline(
     page_id: str | None = None
     try:
         result.notion_url, page_id = await writer.create_source_page(result, url)
+        result.notion_page_id = page_id
         logger.info(f"Notion record created: {result.notion_url}")
     except Exception as exc:
         logger.error(f"Notion write failed for {url}: {exc}")
@@ -241,6 +253,86 @@ async def run_pipeline(
 
     _log_summary(result, url, _started_at)
     return result
+
+
+# ---------------------------------------------------------------------------
+# Discovery orchestrator
+# ---------------------------------------------------------------------------
+
+
+async def run_pipeline_with_discovery(
+    url: str,
+    config: Config,
+    writer: NotionWriter,
+    projects: ProjectsCache,
+) -> list[AnalysisResult]:
+    """
+    Run the analysis pipeline with automatic GitHub repo discovery.
+
+    If the fetched content contains GitHub repo URLs, each repo is analyzed
+    as a separate source. All resulting records are cross-referenced.
+    """
+    parent_result = await run_pipeline(url, config, writer, projects)
+
+    # No discovery if fetch failed, duplicate, or no fetched content
+    if parent_result.fetch_failed or parent_result.duplicate_of or not parent_result.fetched_content:
+        return [parent_result]
+
+    # Extract GitHub URLs from fetched content
+    discovered_urls = extract_github_urls(parent_result.fetched_content, url)
+    if not discovered_urls:
+        return [parent_result]
+
+    logger.info(f"Discovered {len(discovered_urls)} GitHub repo(s) in {url}")
+
+    # Build source context from parent for enriching repo analysis
+    context = _build_source_context(parent_result)
+
+    # Process each discovered repo sequentially
+    repo_results: list[AnalysisResult] = []
+    for repo_url in discovered_urls:
+        try:
+            repo_result = await run_pipeline(repo_url, config, writer, projects, source_context=context)
+            repo_results.append(repo_result)
+        except Exception as exc:
+            logger.warning(f"Discovery pipeline failed for {repo_url}: {exc}")
+
+    all_results = [parent_result, *repo_results]
+
+    # Batch cross-reference all sibling pages
+    await _cross_reference_siblings(writer, all_results)
+
+    return all_results
+
+
+def _build_source_context(result: AnalysisResult) -> str:
+    """Build a concise context string from a parent analysis result."""
+    parts: list[str] = []
+    if result.title:
+        parts.append(f"Title: {result.title}")
+    if result.core_summary:
+        parts.append(f"Summary: {result.core_summary}")
+    parts.append(f"URL: {result.url}")
+    context = "\n".join(parts)
+    return context[:500]
+
+
+async def _cross_reference_siblings(
+    writer: NotionWriter,
+    results: list[AnalysisResult],
+) -> None:
+    """Cross-reference all sibling pages that have Notion records."""
+    page_ids = [r.notion_page_id for r in results if r.has_value and r.notion_page_id]
+    if len(page_ids) < 2 or not writer.database_id:
+        return
+
+    try:
+        for page_id in page_ids:
+            sibling_ids = [pid for pid in page_ids if pid != page_id]
+            await write_relations(writer.client, page_id, sibling_ids)
+        logger.info(f"Batch cross-referenced {len(page_ids)} sibling pages")
+    except Exception as exc:
+        logger.warning(f"Sibling cross-referencing failed (non-blocking): {exc}")
 
 
 # ---------------------------------------------------------------------------

@@ -15,6 +15,48 @@ def _stars(score: int) -> str:
     return _SCORE_STARS.get(score, "?")
 
 
+_TELEGRAM_MSG_LIMIT = 4096
+
+
+def format_results(results: list[AnalysisResult], original_url: str) -> str:
+    """Format one or more AnalysisResults for a Telegram reply."""
+    if len(results) <= 1:
+        return format_result(results[0], original_url)
+
+    # Parent is first result
+    parent_text = format_result(results[0], original_url)
+
+    # Discovered repos
+    repo_results = results[1:]
+    valuable = [r for r in repo_results if r.has_value]
+    skipped = len(repo_results) - len(valuable)
+
+    if not valuable and skipped == 0:
+        return parent_text
+
+    lines: list[str] = [
+        parent_text,
+        "",
+        f"🔍 <b>Nalezené repozitáře ({len(repo_results)}):</b>",
+    ]
+
+    for i, repo in enumerate(valuable, 1):
+        score = repo.discovery_score or 0
+        title = html.escape(repo.title or repo.url)
+        line = f"{i}. {title} | {_stars(score)} ({score}/5)"
+        if repo.notion_url:
+            line += f'\n   📖 <a href="{repo.notion_url}">Notion →</a>'
+        lines.append(line)
+
+    if skipped > 0:
+        lines.append(f"\n<i>({skipped} repozitářů přeskočeno �� duplikát nebo nízká hodnota)</i>")
+
+    text = "\n".join(lines)
+    if len(text) > _TELEGRAM_MSG_LIMIT:
+        text = text[: _TELEGRAM_MSG_LIMIT - 3] + "..."
+    return text
+
+
 def format_result(result: AnalysisResult, original_url: str) -> str:
     """Render an AnalysisResult as an HTML-formatted Telegram message."""
     if result.duplicate_of:
