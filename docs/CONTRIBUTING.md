@@ -2,7 +2,7 @@
 
 This document covers local development setup, running the bot, testing procedures, and code style.
 
-**Last Updated:** 2026-03-20
+**Last Updated:** 2026-04-04
 
 ---
 
@@ -265,6 +265,10 @@ Test fixtures are in `tests/conftest.py` (mock env vars, etc.).
 
 **Existing test files:**
 - `tests/test_twitter.py` — 14 unit tests for X.com fetcher (94% coverage)
+- `tests/test_references.py` — 14 tests for cross-referencing logic (3 skip without notion_client)
+- `tests/test_extractor.py` — 10 tests for GitHub URL extraction
+- `tests/test_pipeline_discovery.py` — 5 tests for discovery orchestrator
+- `tests/test_formatter.py` — 4 tests for multi-result Telegram formatting
 
 ### Debugging
 
@@ -347,12 +351,17 @@ knowledge-source-triage-bot/
 │   │   ├── github.py             # GitHub repos (REST API)
 │   │   └── playwright.py         # Headless browser fallback
 │   ├── analyzer/
-│   │   ├── pipeline.py           # 3-phase analysis orchestration
-│   │   └── prompts.py            # All Claude system prompts
+│   │   ├── pipeline.py           # Analysis orchestration + discovery
+│   │   ├── prompts.py            # All Claude system prompts (5)
+│   │   ├── extractor.py          # GitHub URL extraction from content
+│   │   └── json_utils.py         # JSON parsing from Claude responses
 │   └── notion/
-│       ├── writer.py             # Notion page creation
+│       ├── writer.py             # Notion DB + page creation
+│       ├── references.py         # Cross-referencing logic (F1)
 │       └── projects.py           # Project context cache
-├── tests/                         # pytest test suite
+├── scripts/
+│   └── backfill_references.py    # One-time cross-reference backfill
+├── tests/                         # pytest test suite (50 tests)
 │   ├── __init__.py
 │   └── conftest.py               # Shared fixtures (mock env, etc.)
 ├── .github/workflows/             # CI/CD pipelines

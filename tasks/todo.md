@@ -102,35 +102,26 @@
 - [x] Fix deploy.yml — add venv activation before `pip install` (PEP 668)
 - [x] Add `workflow_dispatch` trigger to deploy.yml (PR #4)
 
+## ✅ Phase 11: F1 — Cross-referencing between records — DONE (2026-04-04)
+- [x] "Related Sources" Relation property v DB schema (PR #8)
+- [x] `bot/notion/references.py` — find_related_sources() + write_relations()
+- [x] CROSS_REFERENCE_SYSTEM prompt (Haiku, sémantické ověření)
+- [x] Pipeline step 7: cross-reference po Notion write
+- [x] Backfill script `scripts/backfill_references.py`
+- [x] 14 unit testů v `tests/test_references.py`
+- [x] Extracted `json_utils.py` z pipeline.py (break circular import)
+- [ ] Backfill spuštění na serveru (jednorázové)
+
+## ✅ Phase 12: F2 — Extrakce GitHub odkazů z článků/postů — DONE (2026-04-04)
+- [x] `bot/analyzer/extractor.py` — extract_github_urls() (PR #9)
+- [x] `run_pipeline_with_discovery()` orchestrátor
+- [x] source_context param pro obohacení Phase 3A
+- [x] `format_results()` pro multi-record Telegram replies
+- [x] Handler + main.py rewiring
+- [x] 19 unit testů (extractor, discovery, formatter)
+- [ ] Merge PR #9 + deploy
+
 ## ⏳ Remaining / Future Work
-
-### F1: Cross-referencing between records
-
-**Priorita:** Medium | **Zaznamenáno:** 2026-04-04
-
-Automatické N:N cross-referencing mezi záznamy v Notion "AI Sources" DB. Při vytvoření nového záznamu se prohledají existující záznamy podle sdílených tags/topics, Claude (Haiku) sémanticky ověří relevanci, a zapíší se obousměrné Notion Relation linky. Plus jednorázový backfill pro existující data. Detailní plán: `docs/plans/2026-04-04-phase-11-cross-referencing.md`.
-
-**Kroky:**
-- [ ] Step 1: Přidat "Related Sources" Relation property do DB schema (`writer.py` — `_ensure_relation_property()`, idempotent)
-- [ ] Step 2: Nový modul `bot/notion/references.py` — `find_related_sources()` + `write_relations()`
-- [ ] Step 3: Claude prompt `CROSS_REFERENCE_SYSTEM` v `prompts.py` (Haiku, sémantické ověření kandidátů)
-- [ ] Step 4: Integrace do `pipeline.py` — step 7 po vytvoření Notion záznamu
-- [ ] Step 5: Backfill script `scripts/backfill_references.py` (N×N matching, rate-limited, dedup)
-- [ ] Step 6: Unit testy `tests/test_references.py` (filtering, prompt, relations, backfill dedup)
-
-### F2: Extrakce GitHub odkazů z článků/postů
-
-**Priorita:** Medium | **Zaznamenáno:** 2026-04-04
-
-Pokud analyzovaný článek nebo post obsahuje odkaz(y) na GitHub repo, extrahovat je a každé repo analyzovat jako samostatný vstup pro bota. Při více GitHub odkazech vytvořit více záznamů v Notion. Pokud spolu souvisejí, automaticky je propojit přes cross-referencing (F1). Zdrojový článek použít jako kontext pro analýzu repa, pokud je relevantní.
-
-**Kroky:**
-- [ ] Extrakce GitHub URL z obsahu článku/postu (regex/parser po fetchi)
-- [ ] Pro každý nalezený GitHub odkaz spustit existující GitHub fetcher + pipeline
-- [ ] Předat kontext zdrojového článku do analýzy repa (obohacení Phase 3A promptu)
-- [ ] Vytvořit Notion záznam pro každé repo zvlášť
-- [ ] Cross-referencovat vzniklé záznamy navzájem + se zdrojovým článkem (závisí na F1)
-- [ ] Unit testy — extrakce odkazů, multi-repo pipeline, kontext forwarding
 
 ### Testy (priorita: střední)
 
