@@ -60,8 +60,8 @@ async def process_queue(
 
     Args:
         queue: asyncio.Queue of (original_message, placeholder_message, urls)
-        pipeline_fn: async callable(url) -> AnalysisResult
-        format_fn: callable(AnalysisResult) -> str
+        pipeline_fn: async callable(url) -> list[AnalysisResult]
+        format_fn: callable(list[AnalysisResult], original_url) -> str
     """
     while True:
         message: Message
@@ -76,8 +76,8 @@ async def process_queue(
             if len(urls) > 1:
                 logger.info(f"Message contains {len(urls)} URLs, processing first: {url}")
 
-            result = await pipeline_fn(url)
-            reply_text = format_fn(result, original_url=url)
+            results = await pipeline_fn(url)
+            reply_text = format_fn(results, original_url=url)
 
         except Exception as exc:
             logger.exception(f"Pipeline failed for message {message.message_id}: {exc}")
