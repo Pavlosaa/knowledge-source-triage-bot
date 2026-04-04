@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 import anthropic
 from loguru import logger
 
+from bot.analyzer.json_utils import strip_markdown_json
 from bot.analyzer.prompts import (
     CREDIBILITY_SYSTEM,
     FULL_ANALYSIS_SYSTEM,
@@ -28,6 +29,7 @@ from bot.fetcher.twitter import (
 from bot.fetcher.twitter import (
     fetch_article as fetch_x_article,
 )
+from bot.notion.references import find_related_sources, write_relations
 
 if TYPE_CHECKING:
     from bot.config import Config
@@ -214,11 +216,28 @@ async def run_pipeline(
     result.project_recommendations = analysis.get("project_recommendations") or []
 
     # --- 6. Write to Notion ---
+    page_id: str | None = None
     try:
-        result.notion_url = await writer.create_source_page(result, url)
+        result.notion_url, page_id = await writer.create_source_page(result, url)
         logger.info(f"Notion record created: {result.notion_url}")
     except Exception as exc:
         logger.error(f"Notion write failed for {url}: {exc}")
+
+    # --- 7. Cross-reference related sources ---
+    if page_id and writer.database_id:
+        try:
+            related_ids = await find_related_sources(
+                writer.client,
+                writer.database_id,
+                result,
+                page_id,
+                config.anthropic_api_key,
+            )
+            if related_ids:
+                await write_relations(writer.client, page_id, related_ids)
+                logger.info(f"Cross-referenced {len(related_ids)} related sources")
+        except Exception as exc:
+            logger.warning(f"Cross-referencing failed (non-blocking): {exc}")
 
     _log_summary(result, url, _started_at)
     return result
@@ -314,41 +333,6 @@ def _credibility_prompt(url: str, content_preview: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _strip_markdown_json(text: str) -> str:
-    """Extract JSON object from text, handling markdown code blocks and trailing content."""
-    # Strip markdown code fences
-    if text.startswith("```"):
-        lines = text.splitlines()
-        inner = lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
-        text = "\n".join(inner).strip()
-
-    # Extract first complete JSON object {…} to handle trailing text
-    start = text.find("{")
-    if start == -1:
-        return text
-    depth = 0
-    in_string = False
-    escape = False
-    for i, ch in enumerate(text[start:], start):
-        if escape:
-            escape = False
-            continue
-        if ch == "\\" and in_string:
-            escape = True
-            continue
-        if ch == '"':
-            in_string = not in_string
-            continue
-        if not in_string:
-            if ch == "{":
-                depth += 1
-            elif ch == "}":
-                depth -= 1
-                if depth == 0:
-                    return text[start : i + 1]
-    return text[start:]
-
-
 def _log_summary(result: AnalysisResult, url: str, started_at: float) -> None:
     """Emit a single structured log line per processed URL."""
     duration_ms = int((time.monotonic() - started_at) * 1000)
@@ -386,7 +370,7 @@ async def _call_claude(
             block = response.content[0]
             raw_text = block.text if hasattr(block, "text") else ""  # type: ignore[union-attr]
             text = raw_text.strip()
-            text = _strip_markdown_json(text)
+            text = strip_markdown_json(text)
             return json.loads(text)  # type: ignore[no-any-return]
         except json.JSONDecodeError as exc:
             logger.warning(f"Claude returned invalid JSON (attempt {attempt + 1}): {exc}")
