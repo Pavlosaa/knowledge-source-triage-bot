@@ -121,12 +121,14 @@ async def _load_all_records(client: AsyncClient, db_id: str) -> list[dict[str, A
             tags = [opt["name"] for opt in props.get("Tags", {}).get("multi_select", [])]
             topics = [opt["name"] for opt in props.get("Topic", {}).get("multi_select", [])]
 
-            records.append({
-                "page_id": page["id"],
-                "title": title,
-                "tags": tags,
-                "topics": topics,
-            })
+            records.append(
+                {
+                    "page_id": page["id"],
+                    "title": title,
+                    "tags": tags,
+                    "topics": topics,
+                }
+            )
 
         if not response.get("has_more"):
             break
@@ -199,19 +201,11 @@ async def _verify_candidates(
     from bot.analyzer.json_utils import strip_markdown_json
     from bot.analyzer.prompts import CROSS_REFERENCE_SYSTEM
 
-    new_info = (
-        f"Title: {record['title']}\n"
-        f"Tags: {', '.join(record['tags'])}\n"
-        f"Topics: {', '.join(record['topics'])}"
-    )
+    new_info = f"Title: {record['title']}\nTags: {', '.join(record['tags'])}\nTopics: {', '.join(record['topics'])}"
 
     candidate_lines = []
     for c in candidates:
-        candidate_lines.append(
-            f"- ID: {c['page_id']}\n"
-            f"  Title: {c['title']}\n"
-            f"  Tags: {', '.join(c['tags'])}"
-        )
+        candidate_lines.append(f"- ID: {c['page_id']}\n  Title: {c['title']}\n  Tags: {', '.join(c['tags'])}")
 
     user_prompt = f"NEW RECORD:\n{new_info}\n\nCANDIDATES:\n{''.join(candidate_lines)}"
 

@@ -96,13 +96,15 @@ async def _query_candidates(
                 continue
 
             props = page.get("properties", {})
-            candidates.append({
-                "page_id": page_id,
-                "title": _extract_title(props),
-                "tags": _extract_multi_select(props, "Tags"),
-                "topics": _extract_multi_select(props, "Topic"),
-                "summary": _extract_summary(page),
-            })
+            candidates.append(
+                {
+                    "page_id": page_id,
+                    "title": _extract_title(props),
+                    "tags": _extract_multi_select(props, "Tags"),
+                    "topics": _extract_multi_select(props, "Topic"),
+                    "summary": _extract_summary(page),
+                }
+            )
 
         if not response.get("has_more"):
             break
@@ -147,16 +149,10 @@ async def _verify_with_claude(
     candidate_lines = []
     for c in candidates:
         candidate_lines.append(
-            f"- ID: {c['page_id']}\n"
-            f"  Title: {c['title']}\n"
-            f"  Summary: {c['summary']}\n"
-            f"  Tags: {', '.join(c['tags'])}"
+            f"- ID: {c['page_id']}\n  Title: {c['title']}\n  Summary: {c['summary']}\n  Tags: {', '.join(c['tags'])}"
         )
 
-    user_prompt = (
-        f"NEW RECORD:\n{new_info}\n\n"
-        f"CANDIDATES:\n{''.join(candidate_lines)}"
-    )
+    user_prompt = f"NEW RECORD:\n{new_info}\n\nCANDIDATES:\n{''.join(candidate_lines)}"
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
     response = await client.messages.create(

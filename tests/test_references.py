@@ -165,13 +165,9 @@ class TestFindRelatedSources:
     @pytest.mark.asyncio()
     async def test_returns_empty_when_no_candidates(self) -> None:
         mock_client = MagicMock()
-        mock_client.databases.query = AsyncMock(
-            return_value={"results": [], "has_more": False}
-        )
+        mock_client.databases.query = AsyncMock(return_value={"results": [], "has_more": False})
 
-        result = await find_related_sources(
-            mock_client, "db-1", _make_result(), "page-new", "test-key"
-        )
+        result = await find_related_sources(mock_client, "db-1", _make_result(), "page-new", "test-key")
         assert result == []
 
     @pytest.mark.asyncio()
@@ -194,9 +190,7 @@ class TestFindRelatedSources:
         )
 
         record = _make_result(tags=["LLM"], topics=["AI Tools & Libraries"])
-        result = await find_related_sources(
-            mock_client, "db-1", record, "page-new", "test-key"
-        )
+        result = await find_related_sources(mock_client, "db-1", record, "page-new", "test-key")
         assert result == []
 
     @pytest.mark.asyncio()
@@ -231,9 +225,7 @@ class TestFindRelatedSources:
         with patch("bot.notion.references.anthropic") as mock_anthropic_mod:
             mock_anthropic_mod.AsyncAnthropic.return_value = mock_claude_client
 
-            result = await find_related_sources(
-                mock_client, "db-1", record, "page-new", "test-key"
-            )
+            result = await find_related_sources(mock_client, "db-1", record, "page-new", "test-key")
 
         assert result == ["page-old"]
 
