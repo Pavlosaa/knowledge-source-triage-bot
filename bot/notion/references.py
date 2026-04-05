@@ -21,6 +21,13 @@ if TYPE_CHECKING:
 _MIN_SHARED_TAGS = 2
 _MIN_SHARED_TOPICS = 1
 
+# Max candidates to send to Claude for semantic verification
+_MAX_CANDIDATES_FOR_CLAUDE = 15
+
+# Overlap score weights
+_TAG_WEIGHT = 1
+_TOPIC_WEIGHT = 2
+
 
 async def find_related_sources(
     client: AsyncClient,
@@ -118,19 +125,22 @@ def _filter_by_overlap(
     candidates: list[dict[str, Any]],
     new_record: AnalysisResult,
 ) -> list[dict[str, Any]]:
-    """Keep candidates with sufficient tag or topic overlap."""
+    """Keep candidates with sufficient tag or topic overlap, ranked by overlap score."""
     new_tags = set(new_record.tags)
     new_topics = set(new_record.topics)
-    filtered: list[dict[str, Any]] = []
+    scored: list[tuple[int, dict[str, Any]]] = []
 
     for candidate in candidates:
         shared_tags = new_tags & set(candidate["tags"])
         shared_topics = new_topics & set(candidate["topics"])
 
         if len(shared_tags) >= _MIN_SHARED_TAGS or len(shared_topics) >= _MIN_SHARED_TOPICS:
-            filtered.append(candidate)
+            score = len(shared_tags) * _TAG_WEIGHT + len(shared_topics) * _TOPIC_WEIGHT
+            scored.append((score, candidate))
 
-    return filtered
+    # Sort by overlap score descending, take top N
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [candidate for _, candidate in scored[:_MAX_CANDIDATES_FOR_CLAUDE]]
 
 
 async def _verify_with_claude(
@@ -157,7 +167,7 @@ async def _verify_with_claude(
     client = anthropic.AsyncAnthropic(api_key=api_key)
     response = await client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=500,
+        max_tokens=1000,
         system=CROSS_REFERENCE_SYSTEM,
         messages=[{"role": "user", "content": user_prompt}],
     )

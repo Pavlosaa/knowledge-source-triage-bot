@@ -89,6 +89,28 @@ class TestFilterByOverlap:
         assert len(result) == 2
         assert {r["page_id"] for r in result} == {"c1", "c2"}
 
+    def test_ranked_by_overlap_score(self) -> None:
+        """Candidates are sorted by overlap score: tagsx1 + topicsx2."""
+        record = _make_result(tags=["LLM", "RAG", "embeddings"], topics=["AI Tools & Libraries"])
+        candidates = [
+            _make_candidate("c1", tags=["LLM", "RAG"]),  # score: 2x1 = 2
+            _make_candidate("c2", tags=["LLM", "RAG", "embeddings"], topics=["AI Tools & Libraries"]),  # score: 3x1 + 1x2 = 5
+            _make_candidate("c3", tags=["LLM", "RAG"], topics=["AI Tools & Libraries"]),  # score: 2x1 + 1x2 = 4
+        ]
+        result = _filter_by_overlap(candidates, record)
+        assert [r["page_id"] for r in result] == ["c2", "c3", "c1"]
+
+    def test_capped_at_max_candidates(self) -> None:
+        """Only top _MAX_CANDIDATES_FOR_CLAUDE candidates are returned."""
+        from bot.notion.references import _MAX_CANDIDATES_FOR_CLAUDE
+
+        record = _make_result(tags=["LLM", "RAG"])
+        candidates = [
+            _make_candidate(f"c{i}", tags=["LLM", "RAG"]) for i in range(30)
+        ]
+        result = _filter_by_overlap(candidates, record)
+        assert len(result) == _MAX_CANDIDATES_FOR_CLAUDE
+
     def test_empty_candidates(self) -> None:
         record = _make_result(tags=["LLM"])
         assert _filter_by_overlap([], record) == []
