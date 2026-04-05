@@ -2,7 +2,7 @@
 
 This document covers production deployment, systemd service management, logging, troubleshooting, and manual prerequisites for the AI Knowledge Source Triage Bot.
 
-**Last Updated:** 2026-03-20
+**Last Updated:** 2026-04-04
 
 ---
 
@@ -369,6 +369,56 @@ If you're running the bot with `python main.py` (not systemd), logs go to:
 tail -f logs/bot.log        # All events
 tail -f logs/errors.log     # Errors only
 ```
+
+---
+
+## Cross-Reference Backfill (One-Time)
+
+Run after deploying F1 to link existing records:
+
+```bash
+cd ~/knowledge-source-triage-bot
+source venv/bin/activate
+python -m scripts.backfill_references
+```
+
+**What it does:**
+- Queries all records from AI Sources DB
+- Finds tag/topic overlap candidates
+- Claude Haiku verifies semantic relevance
+- Writes bidirectional Notion Relations
+- Rate-limited: 0.35s between Notion API calls
+- Skips already-linked pairs (idempotent)
+
+**Monitor:**
+```bash
+# Watch progress
+# Script logs: "Processing X/Y: title → N relations found"
+# Final: "Backfill complete: N total relations created"
+```
+
+**API cost estimate:** ~1 Claude Haiku call per record with overlap candidates.
+
+---
+
+## Cross-Reference & Discovery Monitoring
+
+```bash
+# Cross-referencing (F1)
+grep "Cross-referenced\|Cross-referencing failed" logs/bot.log
+
+# GitHub repo discovery (F2)
+grep "Discovered.*GitHub\|Discovery pipeline\|Batch cross-referenced" logs/bot.log
+```
+
+**Expected healthy signals:**
+- "Cross-referenced N related sources" — per-record linking
+- "Discovered N GitHub repo(s)" — article/tweet with embedded repos
+- "Batch cross-referenced N sibling pages" — parent + discovered repos linked
+
+**Failure signals (non-blocking):**
+- "Cross-referencing failed (non-blocking)" — doesn't affect main pipeline
+- "Discovery pipeline failed" — individual repo failed, others continue
 
 ---
 
