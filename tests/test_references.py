@@ -94,7 +94,9 @@ class TestFilterByOverlap:
         record = _make_result(tags=["LLM", "RAG", "embeddings"], topics=["AI Tools & Libraries"])
         candidates = [
             _make_candidate("c1", tags=["LLM", "RAG"]),  # score: 2x1 = 2
-            _make_candidate("c2", tags=["LLM", "RAG", "embeddings"], topics=["AI Tools & Libraries"]),  # score: 3x1 + 1x2 = 5
+            _make_candidate(
+                "c2", tags=["LLM", "RAG", "embeddings"], topics=["AI Tools & Libraries"]
+            ),  # score: 3x1 + 1x2 = 5
             _make_candidate("c3", tags=["LLM", "RAG"], topics=["AI Tools & Libraries"]),  # score: 2x1 + 1x2 = 4
         ]
         result = _filter_by_overlap(candidates, record)
@@ -105,9 +107,7 @@ class TestFilterByOverlap:
         from bot.notion.references import _MAX_CANDIDATES_FOR_CLAUDE
 
         record = _make_result(tags=["LLM", "RAG"])
-        candidates = [
-            _make_candidate(f"c{i}", tags=["LLM", "RAG"]) for i in range(30)
-        ]
+        candidates = [_make_candidate(f"c{i}", tags=["LLM", "RAG"]) for i in range(30)]
         result = _filter_by_overlap(candidates, record)
         assert len(result) == _MAX_CANDIDATES_FOR_CLAUDE
 
