@@ -49,7 +49,7 @@ def format_results(results: list[AnalysisResult], original_url: str) -> str:
         lines.append(line)
 
     if skipped > 0:
-        lines.append(f"\n<i>({skipped} repozitářů přeskočeno �� duplikát nebo nízká hodnota)</i>")
+        lines.append(f"\n<i>({skipped} repozitářů přeskočeno -- duplikát nebo nízká hodnota)</i>")
 
     text = "\n".join(lines)
     if len(text) > _TELEGRAM_MSG_LIMIT:
