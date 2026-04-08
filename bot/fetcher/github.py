@@ -33,6 +33,8 @@ def extract_repo_coords(url: str) -> tuple[str, str] | None:
     if not match:
         return None
     repo = match.group(2).rstrip("/")
+    if repo.endswith(".git"):
+        repo = repo[:-4]
     return match.group(1), repo
 
 

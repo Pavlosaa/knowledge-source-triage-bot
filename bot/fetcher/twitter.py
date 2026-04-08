@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -12,6 +13,8 @@ from loguru import logger
 
 _SCRAPFLY_API = "https://api.scrapfly.io/scrape"
 _SCRAPFLY_TIMEOUT = 160.0  # ScrapFly default read timeout is 155s
+_SCRAPFLY_MAX_RETRIES = 2
+_SCRAPFLY_RETRY_DELAY = 5.0
 
 
 class ScrapFlyError(Exception):
@@ -63,7 +66,7 @@ def _extract_author_username(url: str) -> str:
 
 
 async def _scrapfly_fetch(url: str, api_key: str) -> str:
-    """Call ScrapFly API and return rendered HTML."""
+    """Call ScrapFly API and return rendered HTML. Retries on timeout/network errors."""
     params = {
         "url": url,
         "key": api_key,
@@ -71,10 +74,37 @@ async def _scrapfly_fetch(url: str, api_key: str) -> str:
         "render_js": "true",
         "country": "us",
     }
+
+    last_exc: Exception | None = None
+    for attempt in range(_SCRAPFLY_MAX_RETRIES + 1):
+        if attempt > 0:
+            logger.info(f"ScrapFly retry {attempt}/{_SCRAPFLY_MAX_RETRIES} for {url}")
+            await asyncio.sleep(_SCRAPFLY_RETRY_DELAY * attempt)
+
+        try:
+            response = await _scrapfly_request(url, params)
+            return _parse_scrapfly_response(response)
+        except httpx.TimeoutException as exc:
+            logger.warning(f"ScrapFly timeout (attempt {attempt + 1}): {url}")
+            last_exc = exc
+        except httpx.NetworkError as exc:
+            logger.warning(f"ScrapFly network error (attempt {attempt + 1}): {url} — {exc}")
+            last_exc = exc
+        except ScrapFlyError:
+            raise  # Don't retry on API-level errors (4xx, empty content)
+
+    raise ScrapFlyError(f"ScrapFly failed after {_SCRAPFLY_MAX_RETRIES + 1} attempts (timeout/network)") from last_exc
+
+
+async def _scrapfly_request(url: str, params: dict[str, str]) -> httpx.Response:
+    """Execute a single ScrapFly HTTP request."""
     logger.info(f"ScrapFly request: url={url}")
     async with httpx.AsyncClient(timeout=_SCRAPFLY_TIMEOUT) as client:
-        response = await client.get(_SCRAPFLY_API, params=params)
+        return await client.get(_SCRAPFLY_API, params=params)
 
+
+def _parse_scrapfly_response(response: httpx.Response) -> str:
+    """Parse ScrapFly API response and return HTML content."""
     logger.info(f"ScrapFly response: status={response.status_code} content_length={len(response.content)}")
 
     if response.status_code != 200:
@@ -84,7 +114,7 @@ async def _scrapfly_fetch(url: str, api_key: str) -> str:
     data = response.json()
     result = data.get("result", {})
 
-    # Log ScrapFly result metadata (everything except the HTML content itself)
+    # Log ScrapFly result metadata
     log_url = result.get("log_url")
     status = result.get("status")
     status_code = result.get("status_code")
