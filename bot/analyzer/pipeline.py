@@ -206,7 +206,8 @@ async def run_pipeline(
         )
     except Exception as exc:
         logger.error(f"Phase 3A failed for {url}: {exc}")
-        result.rejection_reason = f"Analysis failed: {exc}"
+        result.fetch_failed = True
+        result.rejection_reason = "Claude API dočasně nedostupné, zkus znovu později."
         _log_summary(result, url, _started_at)
         return result
 
