@@ -134,7 +134,30 @@ def _parse_tweet_html(html: str, tweet_id: str, url: str) -> TweetContent:
     if not author_name:
         author_name = author_username
 
+    # Extract URLs from plaintext, <a> hrefs in tweet text, and card wrapper
     embedded_urls = _URL_RE.findall(text)
+    if tweet_text_el:
+        for link in tweet_text_el.find_all("a", href=True):
+            href = str(link["href"])
+            if href.startswith("http"):
+                embedded_urls.append(href)
+
+    # Extract link from card wrapper (link preview cards)
+    card = soup.find(attrs={"data-testid": "card.wrapper"})
+    if card:
+        for link in card.find_all("a", href=True):
+            href = str(link["href"])
+            if href.startswith("http"):
+                embedded_urls.append(href)
+
+    # Deduplicate while preserving order
+    seen: set[str] = set()
+    unique_urls: list[str] = []
+    for u in embedded_urls:
+        if u not in seen:
+            seen.add(u)
+            unique_urls.append(u)
+    embedded_urls = unique_urls
 
     tweet = TweetContent(
         tweet_id=tweet_id,

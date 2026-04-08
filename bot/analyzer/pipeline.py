@@ -279,7 +279,7 @@ async def run_pipeline_with_discovery(
         return [parent_result]
 
     # Extract GitHub URLs from fetched content
-    discovered_urls = extract_github_urls(parent_result.fetched_content, url)
+    discovered_urls = await extract_github_urls(parent_result.fetched_content, url)
     if not discovered_urls:
         return [parent_result]
 
