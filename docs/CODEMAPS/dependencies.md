@@ -1,4 +1,4 @@
-<!-- Generated: 2026-03-02 | Updated: 2026-04-04 | Files scanned: 29 | Token estimate: ~600 -->
+<!-- Generated: 2026-03-02 | Updated: 2026-04-08 | Files scanned: 29 | Token estimate: ~600 -->
 
 # External Dependencies & Services Codemap
 

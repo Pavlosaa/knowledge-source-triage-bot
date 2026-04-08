@@ -1,4 +1,4 @@
-<!-- Generated: 2026-03-02 | Updated: 2026-04-04 | Files scanned: 29 | Token estimate: ~850 -->
+<!-- Generated: 2026-03-02 | Updated: 2026-04-08 | Files scanned: 29 | Token estimate: ~900 -->
 
 # Backend Module Codemap
 
@@ -55,7 +55,7 @@ format_result(result, original_url) → str
 
 ## Layer 3: Content Fetching
 
-### bot/fetcher/twitter.py (192L)
+### bot/fetcher/twitter.py (~210L)
 ```
 TweetContent: tweet_id, author_name, author_username, text, follower_count?, is_verified?, embedded_urls
 ArticleContent: url, title?, author_name?, body
@@ -63,9 +63,13 @@ ArticleContent: url, title?, author_name?, body
 detect_content_type(url) → "tweet" | "article" | "unknown"
 fetch_tweet(tweet_id, api_key) → TweetContent  # ScrapFly + BS4
 fetch_article(url, api_key) → ArticleContent    # ScrapFly + BS4
+
+_scrapfly_fetch(url, api_key) → str  # retry 2x on timeout/network errors
+_extract_hrefs(element) → list[str]  # extract <a> href from BS4 element
+_parse_tweet_html: extracts from tweetText + card.wrapper (link preview cards)
 ```
 
-### bot/fetcher/github.py (77L)
+### bot/fetcher/github.py (79L)
 ```
 RepoContent: owner, repo, description?, stars, language?, readme?
 
@@ -98,7 +102,7 @@ fetch_with_playwright(url) → PageContent
 
 run_pipeline(url, config, writer, projects, source_context?) → AnalysisResult
   0. Dedup check → 1. Fetch → 2. Phase 1 (Haiku) → 3. Phase 2 (Haiku)
-  → 4. Phase 3A (Sonnet) or 3B (Haiku) → 5. Notion write → 6. Cross-ref
+  → 4. Phase 3A (Sonnet, fetch_failed on API error) or 3B (Haiku) → 5. Notion write → 6. Cross-ref
 
 run_pipeline_with_discovery(url, config, writer, projects) → list[AnalysisResult]
   1. run_pipeline(url) for parent
@@ -107,13 +111,14 @@ run_pipeline_with_discovery(url, config, writer, projects) → list[AnalysisResu
   4. Batch cross-reference all sibling pages
 ```
 
-### bot/analyzer/extractor.py (83L)
+### bot/analyzer/extractor.py (~95L)
 ```
-extract_github_urls(fetched, source_url) → list[str]
+async extract_github_urls(fetched, source_url) → list[str]
   TweetContent: scan text + embedded_urls
   ArticleContent: scan body
   RepoContent: return [] (depth limit)
-  Cap: 5 repos, dedup, filter source URL
+  Resolves t.co/bit.ly shortlinks via HTTP HEAD
+  Cap: 5 repos, dedup, filter source URL, strip .git suffix
 ```
 
 ### bot/analyzer/json_utils.py (38L)

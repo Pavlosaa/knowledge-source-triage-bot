@@ -1,4 +1,4 @@
-<!-- Generated: 2026-03-02 | Updated: 2026-04-04 | Files scanned: 29 | Token estimate: ~900 -->
+<!-- Generated: 2026-03-02 | Updated: 2026-04-08 | Files scanned: 29 | Token estimate: ~900 -->
 
 # AI Knowledge Source Triage Bot — Codebase Overview
 
@@ -94,10 +94,16 @@ format_results() → Telegram HTML Reply
 
 ---
 
-## Recent Changes (2026-04-04)
+## Recent Changes
 
-- **F1: Cross-referencing** — "Related Sources" Notion Relation, semantic matching via Claude Haiku, backfill script
-- **F2: GitHub repo discovery** — Extract GitHub URLs from articles/tweets, analyze each, cross-reference siblings
-- **Extracted** `json_utils.py` from pipeline.py (break circular import)
-- **New** `extractor.py`, `references.py`, `backfill_references.py`
-- **Updated** formatter for multi-record replies, handler for list[AnalysisResult]
+**2026-04-08 (PR #12):**
+- ScrapFly retry on timeout/network (2x with backoff)
+- Tweet card.wrapper href extraction (link preview cards)
+- t.co shortlink resolution (async HTTP HEAD)
+- `.git` suffix strip on GitHub URLs
+- Phase 3A API errors → `fetch_failed` (not false rejection)
+
+**2026-04-04 (PRs #8-#10):**
+- F1: Cross-referencing — Notion Relations, semantic matching, backfill script
+- F2: GitHub repo discovery — extract from articles/tweets, analyze, cross-reference
+- Cross-ref candidates capped at top 15 by overlap score
