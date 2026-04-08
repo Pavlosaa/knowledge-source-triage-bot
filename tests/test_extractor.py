@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from bot.analyzer.extractor import extract_github_urls
 from bot.fetcher.github import RepoContent
@@ -21,28 +24,32 @@ class FakeTweet:
 
 
 class TestExtractGithubUrls:
-    def test_article_with_two_repos(self) -> None:
+    @pytest.mark.asyncio()
+    async def test_article_with_two_repos(self) -> None:
         article = FakeArticle(body="Check out https://github.com/owner/repo-one and https://github.com/owner/repo-two")
-        result = extract_github_urls(article, "https://example.com/article")
+        result = await extract_github_urls(article, "https://example.com/article")
         assert result == [
             "https://github.com/owner/repo-one",
             "https://github.com/owner/repo-two",
         ]
 
-    def test_tweet_embedded_urls(self) -> None:
+    @pytest.mark.asyncio()
+    async def test_tweet_embedded_github_url(self) -> None:
         tweet = FakeTweet(
             text="Great tool!",
             embedded_urls=["https://github.com/user/cool-lib"],
         )
-        result = extract_github_urls(tweet, "https://x.com/user/status/123")
+        result = await extract_github_urls(tweet, "https://x.com/user/status/123")
         assert result == ["https://github.com/user/cool-lib"]
 
-    def test_tweet_text_body(self) -> None:
+    @pytest.mark.asyncio()
+    async def test_tweet_text_body(self) -> None:
         tweet = FakeTweet(text="Try https://github.com/user/my-tool for automation")
-        result = extract_github_urls(tweet, "https://x.com/user/status/123")
+        result = await extract_github_urls(tweet, "https://x.com/user/status/123")
         assert result == ["https://github.com/user/my-tool"]
 
-    def test_repo_content_returns_empty(self) -> None:
+    @pytest.mark.asyncio()
+    async def test_repo_content_returns_empty(self) -> None:
         repo = RepoContent(
             owner="owner",
             repo="repo",
@@ -51,37 +58,77 @@ class TestExtractGithubUrls:
             language="Python",
             readme="See also https://github.com/other/repo",
         )
-        result = extract_github_urls(repo, "https://github.com/owner/repo")
+        result = await extract_github_urls(repo, "https://github.com/owner/repo")
         assert result == []
 
-    def test_source_url_filtered_out(self) -> None:
+    @pytest.mark.asyncio()
+    async def test_source_url_filtered_out(self) -> None:
         article = FakeArticle(body="About https://github.com/owner/self-repo and https://github.com/owner/other-repo")
-        result = extract_github_urls(article, "https://github.com/owner/self-repo")
+        result = await extract_github_urls(article, "https://github.com/owner/self-repo")
         assert result == ["https://github.com/owner/other-repo"]
 
-    def test_duplicates_removed(self) -> None:
+    @pytest.mark.asyncio()
+    async def test_duplicates_removed(self) -> None:
         article = FakeArticle(body="https://github.com/owner/repo https://github.com/owner/repo again")
-        result = extract_github_urls(article, "https://example.com")
+        result = await extract_github_urls(article, "https://example.com")
         assert result == ["https://github.com/owner/repo"]
 
-    def test_max_cap(self) -> None:
+    @pytest.mark.asyncio()
+    async def test_max_cap(self) -> None:
         urls = " ".join(f"https://github.com/owner/repo-{i}" for i in range(10))
         article = FakeArticle(body=urls)
-        result = extract_github_urls(article, "https://example.com")
+        result = await extract_github_urls(article, "https://example.com")
         assert len(result) == 5
 
-    def test_non_repo_urls_filtered(self) -> None:
+    @pytest.mark.asyncio()
+    async def test_non_repo_urls_filtered(self) -> None:
         article = FakeArticle(body="Visit https://github.com/settings or https://github.com/owner/real-repo")
-        result = extract_github_urls(article, "https://example.com")
-        # "settings" is not a valid repo URL (no owner/repo pattern)
+        result = await extract_github_urls(article, "https://example.com")
         assert result == ["https://github.com/owner/real-repo"]
 
-    def test_url_with_trailing_path(self) -> None:
+    @pytest.mark.asyncio()
+    async def test_url_with_trailing_path(self) -> None:
         article = FakeArticle(body="See https://github.com/owner/repo/tree/main/src for details")
-        result = extract_github_urls(article, "https://example.com")
+        result = await extract_github_urls(article, "https://example.com")
         assert result == ["https://github.com/owner/repo"]
 
-    def test_empty_content(self) -> None:
+    @pytest.mark.asyncio()
+    async def test_empty_content(self) -> None:
         article = FakeArticle(body="No links here")
-        result = extract_github_urls(article, "https://example.com")
+        result = await extract_github_urls(article, "https://example.com")
+        assert result == []
+
+    @pytest.mark.asyncio()
+    async def test_tco_shortlink_resolved(self) -> None:
+        """t.co links in embedded_urls are resolved to final GitHub URLs."""
+        tweet = FakeTweet(
+            text="GitHub Repository:",
+            embedded_urls=["https://t.co/FApE40Q0uh"],
+        )
+
+        mock_response = AsyncMock()
+        mock_response.url = "https://github.com/VoltAgent/awesome-design-md"
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.head = AsyncMock(return_value=mock_response)
+
+        with patch("bot.analyzer.extractor.httpx.AsyncClient", return_value=mock_client):
+            result = await extract_github_urls(tweet, "https://x.com/user/status/123")
+
+        assert result == ["https://github.com/VoltAgent/awesome-design-md"]
+
+    @pytest.mark.asyncio()
+    async def test_tco_resolution_failure_skips(self) -> None:
+        """If t.co resolution fails, the shortlink is kept (and filtered as non-GitHub)."""
+        tweet = FakeTweet(
+            text="Check this:",
+            embedded_urls=["https://t.co/broken"],
+        )
+
+        with patch("bot.analyzer.extractor.httpx.AsyncClient", side_effect=Exception("network error")):
+            result = await extract_github_urls(tweet, "https://x.com/user/status/123")
+
+        # t.co URL doesn't match GitHub pattern, so filtered out
         assert result == []

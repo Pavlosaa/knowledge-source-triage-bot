@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from typing import Any
 
 import httpx
 from bs4 import BeautifulSoup
@@ -108,6 +109,16 @@ async def _scrapfly_fetch(url: str, api_key: str) -> str:
     return html
 
 
+def _extract_hrefs(element: Any) -> list[str]:
+    """Extract http(s) href values from <a> tags within an element."""
+    urls: list[str] = []
+    for link in element.find_all("a", href=True):
+        href = str(link["href"])
+        if href.startswith("http"):
+            urls.append(href)
+    return urls
+
+
 def _parse_tweet_html(html: str, tweet_id: str, url: str) -> TweetContent:
     """Parse rendered tweet page HTML into TweetContent."""
     soup = BeautifulSoup(html, "lxml")
@@ -134,7 +145,24 @@ def _parse_tweet_html(html: str, tweet_id: str, url: str) -> TweetContent:
     if not author_name:
         author_name = author_username
 
-    embedded_urls = _URL_RE.findall(text)
+    # Extract URLs from plaintext, <a> hrefs in tweet text, and card wrapper
+    embedded_urls: list[str] = _URL_RE.findall(text)
+    if tweet_text_el:
+        embedded_urls.extend(_extract_hrefs(tweet_text_el))
+
+    # Extract link from card wrapper (link preview cards)
+    card = soup.find(attrs={"data-testid": "card.wrapper"})
+    if card and hasattr(card, "find_all"):
+        embedded_urls.extend(_extract_hrefs(card))
+
+    # Deduplicate while preserving order
+    seen: set[str] = set()
+    unique_urls: list[str] = []
+    for u in embedded_urls:
+        if u not in seen:
+            seen.add(u)
+            unique_urls.append(u)
+    embedded_urls = unique_urls
 
     tweet = TweetContent(
         tweet_id=tweet_id,
