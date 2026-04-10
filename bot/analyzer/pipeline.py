@@ -159,7 +159,11 @@ async def run_pipeline(
             logger.warning(f"Phase 1 failed, continuing with neutral credibility: {exc}")
             result.credibility_score = 3
 
-    if not skip_credibility and result.credibility_score is not None and result.credibility_score < _CREDIBILITY_REJECT_THRESHOLD:
+    if (
+        not skip_credibility
+        and result.credibility_score is not None
+        and result.credibility_score < _CREDIBILITY_REJECT_THRESHOLD
+    ):
         # --- Phase 3B: Rejection summary for low-credibility sources (Haiku) ---
         credibility_reason = f"Low credibility ({result.credibility_score}/5): {result.credibility_reason}"
         try:
@@ -268,7 +272,10 @@ async def run_pipeline_with_discovery(
     Override params are applied to the parent URL only, not discovered repos.
     """
     parent_result = await run_pipeline(
-        url, config, writer, projects,
+        url,
+        config,
+        writer,
+        projects,
         skip_credibility=skip_credibility,
         is_override=is_override,
     )

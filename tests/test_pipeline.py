@@ -189,8 +189,12 @@ class TestOverrideParams:
             mock_claude.side_effect = [_make_analysis_response()]
 
             result = await run_pipeline(
-                "https://example.com", config, writer, projects,
-                skip_credibility=True, is_override=True,
+                "https://example.com",
+                config,
+                writer,
+                projects,
+                skip_credibility=True,
+                is_override=True,
             )
 
         assert result.has_value is True
@@ -214,7 +218,10 @@ class TestOverrideParams:
             ]
 
             result = await run_pipeline(
-                "https://example.com", config, writer, projects,
+                "https://example.com",
+                config,
+                writer,
+                projects,
                 is_override=True,
             )
 
