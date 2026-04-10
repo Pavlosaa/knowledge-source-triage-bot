@@ -17,7 +17,6 @@ from bot.analyzer.prompts import (
     CREDIBILITY_SYSTEM,
     FULL_ANALYSIS_SYSTEM,
     REJECTION_SUMMARY_SYSTEM,
-    VALUE_ASSESSMENT_SYSTEM,
 )
 from bot.fetcher.article import fetch_article as fetch_generic_article
 from bot.fetcher.github import RepoContent, extract_repo_coords, fetch_repo
@@ -38,7 +37,7 @@ if TYPE_CHECKING:
     from bot.notion.writer import NotionWriter
 
 # Content truncation limits (chars) to control token costs
-_PHASE12_CONTENT_LIMIT = 3_000
+_PHASE1_CONTENT_LIMIT = 3_000
 _PHASE3_CONTENT_LIMIT = 6_000
 
 # Credibility score below which we reject without further analysis
@@ -87,6 +86,9 @@ class AnalysisResult:
     # True when fetcher failed completely (content unavailable)
     fetch_failed: bool = False
 
+    # True when created via /accept override (adds "Manual Override" tag)
+    is_override: bool = False
+
     # Page ID for cross-referencing (set after Notion write)
     notion_page_id: str | None = None
 
@@ -100,16 +102,22 @@ async def run_pipeline(
     writer: NotionWriter,
     projects: ProjectsCache,
     source_context: str | None = None,
+    *,
+    skip_credibility: bool = False,
+    is_override: bool = False,
 ) -> AnalysisResult:
     """
     Full analysis pipeline:
       1. Fetch content (twitter / playwright / github / article)
-      2. Phase 1: credibility check (Haiku)
-      3. Phase 2: value assessment (Haiku)
-      4. Phase 3A/B: full analysis or rejection summary (Sonnet / Haiku)
-      5. Create Notion page if has_value
+      2. Phase 1: credibility check (Haiku) — reject if score < 2
+      3. Phase 3A: full analysis (Sonnet) — classify, score, create Notion record
+      On rejection: Phase 3B generates brief summary (Haiku)
+
+    Override params (used by /accept command):
+      skip_credibility: bypass Phase 1 credibility check
+      is_override: mark result for "Manual Override" Notion tag
     """
-    result = AnalysisResult(url=url, has_value=False)
+    result = AnalysisResult(url=url, has_value=False, is_override=is_override)
     _started_at = time.monotonic()
 
     # --- 0. Dedup check ---
@@ -135,62 +143,47 @@ async def run_pipeline(
     result.fetched_content = fetched
     content_text = _build_content_text(fetched)
 
-    # --- 2. Phase 1: Credibility (Haiku) ---
-    try:
-        cred = await _call_claude(
-            system=CREDIBILITY_SYSTEM,
-            user=_credibility_prompt(url, content_text[:_PHASE12_CONTENT_LIMIT]),
-            model=_HAIKU,
-            max_tokens=150,
-            api_key=config.anthropic_api_key,
-        )
-        result.credibility_score = int(cred.get("credibility_score", 3))
-        result.credibility_reason = cred.get("credibility_reason")
-    except Exception as exc:
-        logger.warning(f"Phase 1 failed, continuing with neutral credibility: {exc}")
-        result.credibility_score = 3
+    # --- 2. Phase 1: Credibility (Haiku) — skipped on override ---
+    if not skip_credibility:
+        try:
+            cred = await _call_claude(
+                system=CREDIBILITY_SYSTEM,
+                user=_credibility_prompt(url, content_text[:_PHASE1_CONTENT_LIMIT]),
+                model=_HAIKU,
+                max_tokens=150,
+                api_key=config.anthropic_api_key,
+            )
+            result.credibility_score = int(cred.get("credibility_score", 3))
+            result.credibility_reason = cred.get("credibility_reason")
+        except Exception as exc:
+            logger.warning(f"Phase 1 failed, continuing with neutral credibility: {exc}")
+            result.credibility_score = 3
 
-    if result.credibility_score < _CREDIBILITY_REJECT_THRESHOLD:
-        result.rejection_reason = f"Low credibility ({result.credibility_score}/5): {result.credibility_reason}"
-        _log_summary(result, url, _started_at)
-        return result
-
-    # --- 3. Phase 2: Value assessment (Haiku) ---
-    try:
-        value = await _call_claude(
-            system=VALUE_ASSESSMENT_SYSTEM,
-            user=content_text[:_PHASE12_CONTENT_LIMIT],
-            model=_HAIKU,
-            max_tokens=150,
-            api_key=config.anthropic_api_key,
-        )
-        has_value = bool(value.get("has_value", False))
-        phase2_rejection = value.get("rejection_reason")
-    except Exception as exc:
-        logger.warning(f"Phase 2 failed, assuming no value: {exc}")
-        has_value = False
-        phase2_rejection = "Analysis phase failed"
-
-    if not has_value:
-        # --- 4. Phase 3B: Rejection summary (Haiku) ---
+    if (
+        not skip_credibility
+        and result.credibility_score is not None
+        and result.credibility_score < _CREDIBILITY_REJECT_THRESHOLD
+    ):
+        # --- Phase 3B: Rejection summary for low-credibility sources (Haiku) ---
+        credibility_reason = f"Low credibility ({result.credibility_score}/5): {result.credibility_reason}"
         try:
             rejection = await _call_claude(
                 system=REJECTION_SUMMARY_SYSTEM,
-                user=content_text[:_PHASE12_CONTENT_LIMIT],
+                user=content_text[:_PHASE1_CONTENT_LIMIT],
                 model=_HAIKU,
                 max_tokens=200,
                 api_key=config.anthropic_api_key,
             )
             result.brief_summary = rejection.get("brief_summary")
-            result.rejection_reason = rejection.get("rejection_reason") or phase2_rejection
+            result.rejection_reason = rejection.get("rejection_reason") or credibility_reason
         except Exception as exc:
             logger.warning(f"Phase 3B failed: {exc}")
-            result.rejection_reason = phase2_rejection
+            result.rejection_reason = credibility_reason
 
         _log_summary(result, url, _started_at)
         return result
 
-    # --- 5. Phase 3A: Full analysis (Sonnet) ---
+    # --- 3. Phase 3A: Full analysis (Sonnet) ---
     project_context = await projects.get_context()
     phase3_user = f"{content_text[:_PHASE3_CONTENT_LIMIT]}\n\n{project_context}"
     if source_context:
@@ -206,7 +199,8 @@ async def run_pipeline(
         )
     except Exception as exc:
         logger.error(f"Phase 3A failed for {url}: {exc}")
-        result.rejection_reason = f"Analysis failed: {exc}"
+        result.fetch_failed = True
+        result.rejection_reason = "Claude API dočasně nedostupné, zkus znovu později."
         _log_summary(result, url, _started_at)
         return result
 
@@ -265,14 +259,26 @@ async def run_pipeline_with_discovery(
     config: Config,
     writer: NotionWriter,
     projects: ProjectsCache,
+    *,
+    skip_credibility: bool = False,
+    is_override: bool = False,
 ) -> list[AnalysisResult]:
     """
     Run the analysis pipeline with automatic GitHub repo discovery.
 
     If the fetched content contains GitHub repo URLs, each repo is analyzed
     as a separate source. All resulting records are cross-referenced.
+
+    Override params are applied to the parent URL only, not discovered repos.
     """
-    parent_result = await run_pipeline(url, config, writer, projects)
+    parent_result = await run_pipeline(
+        url,
+        config,
+        writer,
+        projects,
+        skip_credibility=skip_credibility,
+        is_override=is_override,
+    )
 
     # No discovery if fetch failed, duplicate, or no fetched content
     if parent_result.fetch_failed or parent_result.duplicate_of or not parent_result.fetched_content:

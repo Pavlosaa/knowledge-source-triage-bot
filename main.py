@@ -5,7 +5,7 @@ import functools
 import sys
 
 from loguru import logger
-from telegram.ext import ApplicationBuilder, filters
+from telegram.ext import ApplicationBuilder, CommandHandler, filters
 from telegram.ext import MessageHandler as TGMessageHandler
 
 from bot.analyzer.pipeline import run_pipeline_with_discovery
@@ -13,7 +13,7 @@ from bot.config import load_config
 from bot.notion.projects import ProjectsCache
 from bot.notion.writer import NotionWriter
 from bot.telegram.formatter import format_results
-from bot.telegram.handler import MessageHandler, process_queue
+from bot.telegram.handler import MessageHandler, accept_command, process_queue
 
 # --- Logging setup ---
 logger.remove()
@@ -42,10 +42,18 @@ async def main() -> None:
 
     app = ApplicationBuilder().token(config.telegram_bot_token).build()
 
+    # Inject dependencies for /accept handler via bot_data
+    app.bot_data["pipeline_fn"] = pipeline_fn
+    app.bot_data["format_fn"] = format_results
+
+    # /accept command must be registered before the generic TEXT handler
+    group_filter = filters.Chat(config.telegram_group_id)
+    app.add_handler(CommandHandler("accept", accept_command, filters=group_filter))
+
     # Listen to messages in the configured group only
     app.add_handler(
         TGMessageHandler(
-            filters.Chat(config.telegram_group_id) & filters.TEXT,
+            group_filter & filters.TEXT,
             handler.handle,
         )
     )

@@ -135,9 +135,11 @@ def _format_rejected(result: AnalysisResult, original_url: str) -> str:
         if result.rejection_reason:
             reason = html.escape(result.rejection_reason[:300])
             lines.append(f"🚫 <b>Důvod:</b> {reason}")
+        lines.append("")
+        lines.append("💡 <i>Odpověz /accept pro vynucené zpracování</i>")
         return "\n".join(lines)
 
-    lines.append("❌ <b>Nízká hodnota</b>")
+    lines.append("❌ <b>Nízká věrohodnost</b>")
 
     if result.brief_summary:
         lines.append("")
@@ -147,4 +149,6 @@ def _format_rejected(result: AnalysisResult, original_url: str) -> str:
         reason = html.escape(result.rejection_reason[:300])
         lines.append(f"🚫 <b>Proč:</b> {reason}")
 
+    lines.append("")
+    lines.append("💡 <i>Odpověz /accept pro vynucené zpracování</i>")
     return "\n".join(lines)
