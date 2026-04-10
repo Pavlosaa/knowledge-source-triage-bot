@@ -26,21 +26,6 @@ Respond ONLY with valid JSON matching this schema:
 {"credibility_score": <1-5>, "credibility_reason": "<one sentence>"}
 """.strip()
 
-VALUE_ASSESSMENT_SYSTEM = """
-You are a critical evaluator of technical content.
-You ignore marketing hype, buzzwords, and repetition.
-You reward concrete insights, novel techniques, and actionable information.
-
-CRITICAL RULES:
-- Base your assessment ONLY on facts explicitly provided in the input.
-- NEVER invent or assume metadata not present in the input.
-- A short tweet format is NOT a reason to reject — evaluate the substance and any linked resources.
-
-Write rejection_reason in Czech.
-Respond ONLY with valid JSON matching this schema:
-{"has_value": <true|false>, "value_score": <1-5>, "rejection_reason": "<reason or null>"}
-""".strip()
-
 FULL_ANALYSIS_SYSTEM = f"""
 You are a technical analyst. Your job is to extract real value from content and discard filler.
 You know the user's existing projects and can recommend how findings apply to them.
