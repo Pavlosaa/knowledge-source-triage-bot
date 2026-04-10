@@ -1,4 +1,4 @@
-<!-- Generated: 2026-03-02 | Updated: 2026-04-04 | Files scanned: 29 | Token estimate: ~700 -->
+<!-- Generated: 2026-03-02 | Updated: 2026-04-10 | Files scanned: 31 | Token estimate: ~750 -->
 
 # Architecture Codemap
 
@@ -10,12 +10,14 @@
 
 ```
 Telegram Group
-    │ TEXT + URL
-    ▼
-handler.py → asyncio.Queue → process_queue()
-    │
-    ▼
-run_pipeline_with_discovery(url)          ← NEW (F2)
+    │ TEXT + URL          /accept (reply to rejection)
+    ▼                     ▼
+handler.py            accept_command()
+  → asyncio.Queue       → extract URL from reply entities
+  → process_queue()      → run_pipeline_with_discovery(skip_credibility?, is_override=True)
+    │                     │
+    ▼                     ▼
+run_pipeline_with_discovery(url)
 ├─ run_pipeline(url) → AnalysisResult
 │  ├─ Dedup check (Notion query)
 │  ├─ _fetch() → fetcher routing
@@ -23,13 +25,13 @@ run_pipeline_with_discovery(url)          ← NEW (F2)
 │  │  ├─ x.com/status → fetch_tweet() (ScrapFly)
 │  │  ├─ x.com/article → fetch_article() (ScrapFly)
 │  │  └─ other → fetch_article() (httpx+BS4+Playwright)
-│  ├─ Phase 1: Credibility (Haiku)
-│  ├─ Phase 2: Value (Haiku)
-│  ├─ Phase 3A: Full Analysis (Sonnet) / 3B: Rejection (Haiku)
-│  ├─ Notion Writer → create page
-│  └─ Cross-reference → find_related_sources() (Haiku)  ← F1
+│  ├─ Phase 1: Credibility (Haiku) — reject if score < 2
+│  │  └─ Phase 3B: Rejection summary (Haiku) — on reject
+│  ├─ Phase 3A: Full Analysis (Sonnet)
+│  ├─ Notion Writer → create page (+ "Manual Override" tag if override)
+│  └─ Cross-reference → find_related_sources() (Haiku)
 │
-├─ extract_github_urls(fetched_content)   ← F2
+├─ extract_github_urls(fetched_content)
 ├─ For each repo: run_pipeline(repo, source_context=...)
 └─ Batch cross-reference siblings
     │
@@ -44,12 +46,13 @@ format_results() → Telegram HTML reply (single or multi-record)
 ```
 main.py
 ├─ bot.config::load_config → Config
-├─ bot.telegram.handler::{MessageHandler, process_queue}
+├─ bot.telegram.handler::{MessageHandler, accept_command, process_queue}
 ├─ bot.telegram.formatter::format_results
+├─ telegram.ext::CommandHandler  (for /accept)
 ├─ bot.analyzer.pipeline::run_pipeline_with_discovery
 │  ├─ bot.analyzer.extractor::extract_github_urls
 │  ├─ bot.analyzer.json_utils::strip_markdown_json
-│  ├─ bot.analyzer.prompts (5 system prompts)
+│  ├─ bot.analyzer.prompts (4 system prompts)
 │  ├─ bot.fetcher.{twitter, github, article, playwright}
 │  ├─ bot.notion.writer::NotionWriter
 │  ├─ bot.notion.references::{find_related_sources, write_relations}
@@ -69,10 +72,10 @@ main.py
 | Source URL | url | Canonicalized |
 | Content Type | select | Tweet, X Article, GitHub, Article |
 | Author | rich_text | |
-| Tags | multi_select | English keywords, max 10 |
+| Tags | multi_select | English keywords, max 10; includes "Manual Override" for overrides |
 | Date Added | date | UTC |
 | Relevant Projects | multi_select | From project recommendations |
-| Related Sources | relation | Self-referencing, bidirectional (F1) |
+| Related Sources | relation | Self-referencing, bidirectional |
 
 ---
 

@@ -1,4 +1,4 @@
-<!-- Generated: 2026-03-02 | Updated: 2026-04-04 | Files scanned: 29 | Token estimate: ~850 -->
+<!-- Generated: 2026-03-02 | Updated: 2026-04-10 | Files scanned: 31 | Token estimate: ~850 -->
 
 # Backend Module Codemap
 
@@ -8,10 +8,13 @@
 
 ## Layer 1: Entry Point & Config
 
-### main.py (79L)
+### main.py (87L)
 ```
 main() → load_config → NotionWriter + ProjectsCache
   → partial(run_pipeline_with_discovery, config, writer, projects)
+  → app.bot_data["pipeline_fn"] = pipeline_fn  # DI for /accept
+  → CommandHandler("accept", accept_command)    # before TEXT handler
+  → TGMessageHandler(filters.Chat & TEXT, handler.handle)
   → process_queue(queue, pipeline_fn, format_results)
   → app.updater.start_polling()
 ```
@@ -30,32 +33,43 @@ load_config() → Config  # fail-fast on missing vars
 
 ## Layer 2: Telegram Integration
 
-### bot/telegram/handler.py (98L)
+### bot/telegram/handler.py (177L)
 ```
 extract_urls(text) → list[str]  # regex: r"https?://[^\s]+"
 
 class MessageHandler:
   handle(update, context) → enqueue (message, placeholder, urls)
 
+accept_command(update, context) → None
+  1. Verify reply to bot message
+  2. Extract URL from reply_to_message.entities (text_link)
+  3. Detect override type (_is_fetch_failure)
+  4. Call pipeline_fn(url, skip_credibility=..., is_override=True)
+  5. Format + send reply
+
 process_queue(queue, pipeline_fn, format_fn) → None  # runs forever
   dequeue → results = pipeline_fn(url) → format_fn(results) → reply
 ```
 
-### bot/telegram/formatter.py (150L)
+### bot/telegram/formatter.py (154L)
 ```
 format_results(results: list[AnalysisResult], original_url) → str
   └─ single result: delegate to format_result()
-  └─ multi: parent + "🔍 Nalezené repozitáře (N):" + compact summaries
+  └─ multi: parent + "Nalezené repozitáře (N):" + compact summaries
 
 format_result(result, original_url) → str
   └─ dispatch: _format_duplicate / _format_valuable / _format_rejected
+
+_format_rejected:
+  - fetch_failed: "Zdroj nedostupný" + /accept hint
+  - credibility: "Nízká věrohodnost" + brief_summary + /accept hint
 ```
 
 ---
 
 ## Layer 3: Content Fetching
 
-### bot/fetcher/twitter.py (192L)
+### bot/fetcher/twitter.py (250L)
 ```
 TweetContent: tweet_id, author_name, author_username, text, follower_count?, is_verified?, embedded_urls
 ArticleContent: url, title?, author_name?, body
@@ -65,7 +79,7 @@ fetch_tweet(tweet_id, api_key) → TweetContent  # ScrapFly + BS4
 fetch_article(url, api_key) → ArticleContent    # ScrapFly + BS4
 ```
 
-### bot/fetcher/github.py (77L)
+### bot/fetcher/github.py (79L)
 ```
 RepoContent: owner, repo, description?, stars, language?, readme?
 
@@ -86,7 +100,7 @@ fetch_with_playwright(url) → PageContent
 
 ## Layer 4: Analysis Pipeline
 
-### bot/analyzer/pipeline.py (478L)
+### bot/analyzer/pipeline.py (484L)
 ```
 @dataclass AnalysisResult:
   url, has_value, content_type?, author?, title?, core_summary?,
@@ -94,20 +108,23 @@ fetch_with_playwright(url) → PageContent
   project_recommendations[], notion_url?, brief_summary?,
   rejection_reason?, topics[], real_world_example?,
   credibility_score?, credibility_reason?, duplicate_of?,
-  fetch_failed, notion_page_id?, fetched_content?
+  fetch_failed, is_override, notion_page_id?, fetched_content?
 
-run_pipeline(url, config, writer, projects, source_context?) → AnalysisResult
-  0. Dedup check → 1. Fetch → 2. Phase 1 (Haiku) → 3. Phase 2 (Haiku)
-  → 4. Phase 3A (Sonnet) or 3B (Haiku) → 5. Notion write → 6. Cross-ref
+run_pipeline(url, config, writer, projects, source_context?,
+             *, skip_credibility=False, is_override=False) → AnalysisResult
+  0. Dedup check → 1. Fetch → 2. Phase 1 (Haiku, skippable)
+  → 3. Phase 3A (Sonnet) → 4. Notion write → 5. Cross-ref
+  On Phase 1 reject: Phase 3B summary → return rejection
 
-run_pipeline_with_discovery(url, config, writer, projects) → list[AnalysisResult]
-  1. run_pipeline(url) for parent
+run_pipeline_with_discovery(url, config, writer, projects,
+                            *, skip_credibility=False, is_override=False) → list[AnalysisResult]
+  1. run_pipeline(url, skip_credibility, is_override) for parent
   2. extract_github_urls(fetched_content) → discovered repos
   3. For each: run_pipeline(repo, source_context=parent_context)
   4. Batch cross-reference all sibling pages
 ```
 
-### bot/analyzer/extractor.py (83L)
+### bot/analyzer/extractor.py (110L)
 ```
 extract_github_urls(fetched, source_url) → list[str]
   TweetContent: scan text + embedded_urls
@@ -121,9 +138,9 @@ extract_github_urls(fetched, source_url) → list[str]
 strip_markdown_json(text) → str  # extract JSON from markdown fences
 ```
 
-### bot/analyzer/prompts.py (114L)
+### bot/analyzer/prompts.py (99L)
 ```
-CREDIBILITY_SYSTEM, VALUE_ASSESSMENT_SYSTEM, FULL_ANALYSIS_SYSTEM,
+CREDIBILITY_SYSTEM, FULL_ANALYSIS_SYSTEM,
 CROSS_REFERENCE_SYSTEM, REJECTION_SUMMARY_SYSTEM, TOPICS[]
 ```
 
@@ -131,19 +148,20 @@ CROSS_REFERENCE_SYSTEM, REJECTION_SUMMARY_SYSTEM, TOPICS[]
 
 ## Layer 5: Notion Integration
 
-### bot/notion/writer.py (290L)
+### bot/notion/writer.py (293L)
 ```
 class NotionWriter:
   client, database_id  # exposed properties for cross-ref
   find_existing(url) → {url, date} | None  # dedup
   create_source_page(result, url) → (page_url, page_id)
   _get_or_create_database() → db_id
-  _ensure_relation_property(db_id)  # "Related Sources" (F1)
+  _ensure_relation_property(db_id)  # "Related Sources"
   _create_record(db_id, result, url) → page dict
+    # Appends "Manual Override" to tags when result.is_override=True
   _build_body(result, url) → block list
 ```
 
-### bot/notion/references.py (198L)
+### bot/notion/references.py (208L)
 ```
 find_related_sources(client, db_id, new_record, page_id, api_key) → list[page_id]
   1. Query candidates (paginated)
@@ -152,7 +170,6 @@ find_related_sources(client, db_id, new_record, page_id, api_key) → list[page_
   4. Return verified page IDs
 
 write_relations(client, page_id, related_ids) → None
-  # Notion handles back-references automatically
 ```
 
 ### bot/notion/projects.py (87L)
@@ -170,5 +187,4 @@ class ProjectsCache:
 python -m scripts.backfill_references
   Load all records → build tag/topic index → N×N matching
   → Claude verify → write relations → rate-limited (0.35s/call)
-  Dedup: canonical pairs, skip existing relations
 ```

@@ -1,4 +1,4 @@
-<!-- Generated: 2026-03-02 | Updated: 2026-04-04 | Files scanned: 29 | Token estimate: ~700 -->
+<!-- Generated: 2026-03-02 | Updated: 2026-04-10 | Files scanned: 31 | Token estimate: ~650 -->
 
 # Data & Configuration Codemap
 
@@ -31,7 +31,7 @@ title?, core_summary?, key_principles[], use_cases[],
 discovery_score?, tags[], project_recommendations[], notion_url?,
 brief_summary?, rejection_reason?, topics[], real_world_example?,
 credibility_score?, credibility_reason?, duplicate_of?, fetch_failed,
-notion_page_id?, fetched_content? (transient)
+is_override, notion_page_id?, fetched_content? (transient)
 ```
 
 ### Fetcher Types
@@ -50,7 +50,6 @@ PageContent:    url, title?, body                (playwright.py)
 | Prompt | Model | Max Tokens | Output Schema |
 |--------|-------|-----------|---------------|
 | CREDIBILITY_SYSTEM | Haiku | 150 | `{credibility_score: 1-5, credibility_reason}` |
-| VALUE_ASSESSMENT_SYSTEM | Haiku | 150 | `{has_value: bool, value_score: 1-5, rejection_reason?}` |
 | FULL_ANALYSIS_SYSTEM | Sonnet | 2000 | `{title, topics[], core_summary, key_principles[], use_cases[], real_world_example, discovery_score, tags[], project_recommendations[]}` |
 | REJECTION_SUMMARY_SYSTEM | Haiku | 200 | `{brief_summary?, rejection_reason}` |
 | CROSS_REFERENCE_SYSTEM | Haiku | 500 | `{related: [{page_id, reason}]}` |
@@ -70,13 +69,13 @@ All text output in Czech except tags (English). Topics from 6 predefined categor
 | Source URL | url | Canonicalized (no www, no trailing slash) |
 | Content Type | select | Tweet (blue), X Article (green), GitHub (gray), Article (orange) |
 | Author | rich_text | |
-| Tags | multi_select | English keywords, max 10 |
+| Tags | multi_select | English keywords, max 10; "Manual Override" added for /accept overrides |
 | Date Added | date | UTC auto |
 | Relevant Projects | multi_select | From recommendations (high/medium only, max 10) |
 | Related Sources | relation | Self-referencing, dual property "Related by" |
 
 **Page Body Blocks:**
-📌 Shrnutí → 🔑 Klíčové poznatky → 💡 Využití → 🌍 Příklad z praxe → 🎯 Relevance pro projekty (toggles) → 🔗 Zdroj (bookmark)
+Shrnutí → Klíčové poznatky → Využití → Příklad z praxe → Relevance pro projekty (toggles) → Zdroj (bookmark)
 
 ---
 

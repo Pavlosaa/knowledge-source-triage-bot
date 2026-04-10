@@ -1,4 +1,4 @@
-<!-- Generated: 2026-03-02 | Updated: 2026-04-04 | Files scanned: 29 | Token estimate: ~600 -->
+<!-- Generated: 2026-03-02 | Updated: 2026-04-10 | Files scanned: 31 | Token estimate: ~600 -->
 
 # External Dependencies & Services Codemap
 
@@ -36,13 +36,14 @@
 ### Telegram (python-telegram-bot v21)
 - **Auth:** TELEGRAM_BOT_TOKEN
 - **Usage:** Receive group messages, send replies (HTML), delete placeholders
+- **Commands:** /accept (reply-based override for rejected links)
 - **Rate limit:** Unlimited for receiving; 30 msg/sec sending
 
 ### Claude API (anthropic v0.49)
 - **Auth:** ANTHROPIC_API_KEY
-- **Models:** Haiku (phases 1, 2, 3B, cross-ref), Sonnet (phase 3A)
-- **Calls per URL:** 3-4 (credibility + value + analysis + cross-ref)
-- **With discovery:** Up to 4 × (1 + N repos) calls per message
+- **Models:** Haiku (phase 1 credibility, phase 3B rejection, cross-ref), Sonnet (phase 3A full analysis)
+- **Calls per URL:** 2-3 (credibility + analysis + cross-ref)
+- **With discovery:** Up to 3 × (1 + N repos) calls per message
 - **Retry:** Exponential backoff, 3 attempts
 
 ### Notion API (notion-client v2.3, async)
@@ -73,7 +74,7 @@
 
 ```
 GitHub Actions (.github/workflows/)
-├─ ci.yml: ruff check → mypy → pytest → pip-audit + TruffleHog
+├─ ci.yml: ruff check + format → mypy → pytest → pip-audit + TruffleHog
 └─ deploy.yml: SSH auto-deploy to Oracle Cloud after CI passes
 ```
 
