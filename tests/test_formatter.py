@@ -30,6 +30,27 @@ def _make_rejected(url: str = "https://example.com") -> AnalysisResult:
     )
 
 
+class TestFormatRejected:
+    """Rejected results show /accept override hint."""
+
+    def test_credibility_rejection_shows_accept_hint(self) -> None:
+        result = _make_rejected()
+        text = format_result(result, original_url="https://example.com")
+        assert "/accept" in text
+        assert "Nízká věrohodnost" in text
+
+    def test_fetch_failure_shows_accept_hint(self) -> None:
+        result = AnalysisResult(
+            url="https://example.com",
+            has_value=False,
+            fetch_failed=True,
+            rejection_reason="Connection timeout",
+        )
+        text = format_result(result, original_url="https://example.com")
+        assert "/accept" in text
+        assert "nedostupný" in text
+
+
 class TestFormatResults:
     def test_single_result_delegates(self) -> None:
         """Single result produces same output as format_result."""

@@ -88,7 +88,7 @@ class TestRunPipelineWithDiscovery:
 
         call_count = 0
 
-        async def mock_pipeline_side_effect(url, config, writer, projects, source_context=None):
+        async def mock_pipeline_side_effect(url, config, writer, projects, source_context=None, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
@@ -183,7 +183,7 @@ class TestRunPipelineWithDiscovery:
 
         calls: list[dict] = []
 
-        async def mock_pipeline(url, config, writer, projects, source_context=None):
+        async def mock_pipeline(url, config, writer, projects, source_context=None, **kwargs):
             calls.append({"url": url, "source_context": source_context})
             if source_context is None:
                 return parent
