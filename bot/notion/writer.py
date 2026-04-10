@@ -206,8 +206,11 @@ class NotionWriter:
         if result.topics:
             properties["Topic"] = {"multi_select": [{"name": t} for t in result.topics[:3]]}
 
-        if result.tags:
-            properties["Tags"] = {"multi_select": [{"name": tag} for tag in result.tags[:10]]}
+        tags = list(result.tags) if result.tags else []
+        if result.is_override:
+            tags.append("Manual Override")
+        if tags:
+            properties["Tags"] = {"multi_select": [{"name": tag} for tag in tags[:10]]}
 
         if relevant_projects:
             properties["Relevant Projects"] = {"multi_select": [{"name": p} for p in relevant_projects[:10]]}

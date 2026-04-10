@@ -86,6 +86,9 @@ class AnalysisResult:
     # True when fetcher failed completely (content unavailable)
     fetch_failed: bool = False
 
+    # True when created via /accept override (adds "Manual Override" tag)
+    is_override: bool = False
+
     # Page ID for cross-referencing (set after Notion write)
     notion_page_id: str | None = None
 
@@ -99,6 +102,9 @@ async def run_pipeline(
     writer: NotionWriter,
     projects: ProjectsCache,
     source_context: str | None = None,
+    *,
+    skip_credibility: bool = False,
+    is_override: bool = False,
 ) -> AnalysisResult:
     """
     Full analysis pipeline:
@@ -106,8 +112,12 @@ async def run_pipeline(
       2. Phase 1: credibility check (Haiku) — reject if score < 2
       3. Phase 3A: full analysis (Sonnet) — classify, score, create Notion record
       On rejection: Phase 3B generates brief summary (Haiku)
+
+    Override params (used by /accept command):
+      skip_credibility: bypass Phase 1 credibility check
+      is_override: mark result for "Manual Override" Notion tag
     """
-    result = AnalysisResult(url=url, has_value=False)
+    result = AnalysisResult(url=url, has_value=False, is_override=is_override)
     _started_at = time.monotonic()
 
     # --- 0. Dedup check ---
@@ -133,22 +143,23 @@ async def run_pipeline(
     result.fetched_content = fetched
     content_text = _build_content_text(fetched)
 
-    # --- 2. Phase 1: Credibility (Haiku) ---
-    try:
-        cred = await _call_claude(
-            system=CREDIBILITY_SYSTEM,
-            user=_credibility_prompt(url, content_text[:_PHASE1_CONTENT_LIMIT]),
-            model=_HAIKU,
-            max_tokens=150,
-            api_key=config.anthropic_api_key,
-        )
-        result.credibility_score = int(cred.get("credibility_score", 3))
-        result.credibility_reason = cred.get("credibility_reason")
-    except Exception as exc:
-        logger.warning(f"Phase 1 failed, continuing with neutral credibility: {exc}")
-        result.credibility_score = 3
+    # --- 2. Phase 1: Credibility (Haiku) — skipped on override ---
+    if not skip_credibility:
+        try:
+            cred = await _call_claude(
+                system=CREDIBILITY_SYSTEM,
+                user=_credibility_prompt(url, content_text[:_PHASE1_CONTENT_LIMIT]),
+                model=_HAIKU,
+                max_tokens=150,
+                api_key=config.anthropic_api_key,
+            )
+            result.credibility_score = int(cred.get("credibility_score", 3))
+            result.credibility_reason = cred.get("credibility_reason")
+        except Exception as exc:
+            logger.warning(f"Phase 1 failed, continuing with neutral credibility: {exc}")
+            result.credibility_score = 3
 
-    if result.credibility_score < _CREDIBILITY_REJECT_THRESHOLD:
+    if not skip_credibility and result.credibility_score is not None and result.credibility_score < _CREDIBILITY_REJECT_THRESHOLD:
         # --- Phase 3B: Rejection summary for low-credibility sources (Haiku) ---
         credibility_reason = f"Low credibility ({result.credibility_score}/5): {result.credibility_reason}"
         try:
@@ -244,14 +255,23 @@ async def run_pipeline_with_discovery(
     config: Config,
     writer: NotionWriter,
     projects: ProjectsCache,
+    *,
+    skip_credibility: bool = False,
+    is_override: bool = False,
 ) -> list[AnalysisResult]:
     """
     Run the analysis pipeline with automatic GitHub repo discovery.
 
     If the fetched content contains GitHub repo URLs, each repo is analyzed
     as a separate source. All resulting records are cross-referenced.
+
+    Override params are applied to the parent URL only, not discovered repos.
     """
-    parent_result = await run_pipeline(url, config, writer, projects)
+    parent_result = await run_pipeline(
+        url, config, writer, projects,
+        skip_credibility=skip_credibility,
+        is_override=is_override,
+    )
 
     # No discovery if fetch failed, duplicate, or no fetched content
     if parent_result.fetch_failed or parent_result.duplicate_of or not parent_result.fetched_content:
