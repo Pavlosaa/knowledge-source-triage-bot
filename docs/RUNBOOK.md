@@ -451,7 +451,7 @@ Common causes:
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | `"Configuration loaded"` then no messages | Bot not listening to correct group | Verify `TELEGRAM_GROUP_ID` in `.env` matches your group. Get correct ID from BotFather. |
-| Message logged but no Notion page created | Claude analysis rejected the content or Notion API error | Check pipeline logs for rejection reason. Verify `NOTION_API_KEY` and page IDs. |
+| Message logged but no Notion page created | Low credibility (score < 2), fetch failure, or Notion API error | Check pipeline logs for rejection reason. User can reply `/accept` to override. Verify `NOTION_API_KEY` and page IDs. |
 | `Notion API error: invalid_page_id` | `NOTION_RND_PAGE_ID` wrong | Get correct ID from https://www.notion.so, copy from URL. |
 
 ### Issue: X.com content not fetching

@@ -264,11 +264,13 @@ Coverage goal: **80%+**
 Test fixtures are in `tests/conftest.py` (mock env vars, etc.).
 
 **Existing test files:**
-- `tests/test_twitter.py` — 14 unit tests for X.com fetcher (94% coverage)
+- `tests/test_pipeline.py` — 9 tests for core pipeline flow (phases, override, error handling)
+- `tests/test_pipeline_discovery.py` — 5 tests for discovery orchestrator
+- `tests/test_accept_handler.py` — 10 tests for /accept command handler
+- `tests/test_twitter.py` — 14 unit tests for X.com fetcher
 - `tests/test_references.py` — 14 tests for cross-referencing logic (3 skip without notion_client)
 - `tests/test_extractor.py` — 10 tests for GitHub URL extraction
-- `tests/test_pipeline_discovery.py` — 5 tests for discovery orchestrator
-- `tests/test_formatter.py` — 4 tests for multi-result Telegram formatting
+- `tests/test_formatter.py` — 6 tests for Telegram formatting (including /accept hint)
 
 ### Debugging
 
@@ -343,7 +345,7 @@ knowledge-source-triage-bot/
 │   ├── __init__.py
 │   ├── config.py                 # Configuration loading + validation
 │   ├── telegram/
-│   │   ├── handler.py            # Message handler + queue processor
+│   │   ├── handler.py            # Message handler + /accept command + queue
 │   │   └── formatter.py          # Result formatting for Telegram
 │   ├── fetcher/
 │   │   ├── twitter.py            # X.com tweets/articles (ScrapFly HTTP API)
@@ -351,8 +353,8 @@ knowledge-source-triage-bot/
 │   │   ├── github.py             # GitHub repos (REST API)
 │   │   └── playwright.py         # Headless browser fallback
 │   ├── analyzer/
-│   │   ├── pipeline.py           # Analysis orchestration + discovery
-│   │   ├── prompts.py            # All Claude system prompts (5)
+│   │   ├── pipeline.py           # Analysis orchestration + discovery + override
+│   │   ├── prompts.py            # All Claude system prompts (4)
 │   │   ├── extractor.py          # GitHub URL extraction from content
 │   │   └── json_utils.py         # JSON parsing from Claude responses
 │   └── notion/
@@ -361,7 +363,7 @@ knowledge-source-triage-bot/
 │       └── projects.py           # Project context cache
 ├── scripts/
 │   └── backfill_references.py    # One-time cross-reference backfill
-├── tests/                         # pytest test suite (50 tests)
+├── tests/                         # pytest test suite (74 tests)
 │   ├── __init__.py
 │   └── conftest.py               # Shared fixtures (mock env, etc.)
 ├── .github/workflows/             # CI/CD pipelines
