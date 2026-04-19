@@ -20,6 +20,7 @@ DB_NAME = "AI Sources"
 
 _TOPIC_COLORS: dict[str, str] = {
     "AI Tools & Libraries": "blue",
+    "Tutorials": "pink",
     "Educational Content": "green",
     "Tips & Tricks": "yellow",
     "Best Practices": "purple",
