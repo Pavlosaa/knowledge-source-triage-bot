@@ -57,7 +57,7 @@ def _extract_url_from_entities(entities: tuple[MessageEntity, ...] | None, text:
         return None
     for entity in entities:
         if entity.type == MessageEntity.TEXT_LINK and entity.url:
-            return entity.url
+            return str(entity.url)
         if entity.type == MessageEntity.URL and text:
             return text[entity.offset : entity.offset + entity.length]
     return None
