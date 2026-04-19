@@ -2,6 +2,7 @@
 
 TOPICS = [
     "AI Tools & Libraries",
+    "Tutorials",
     "Educational Content",
     "Tips & Tricks",
     "Best Practices",
@@ -46,8 +47,9 @@ Topics — pick 1-3 from this list (most content fits 1-2):
 {_TOPICS_LIST}
 
   - "AI Tools & Libraries": software, libraries, frameworks, APIs, models
-  - "Educational Content": concept explanations, tutorials, courses, deep-dives
-  - "Tips & Tricks": workflow tips, prompting tricks, shortcuts, quick wins
+  - "Tutorials": step-by-step guides, how-to articles, walkthroughs, hands-on instructions with concrete steps to follow
+  - "Educational Content": concept explanations, theory, courses, deep-dives into how things work (NOT step-by-step guides)
+  - "Tips & Tricks": workflow tips, prompting tricks, shortcuts, quick wins (short, not full tutorials)
   - "Best Practices": architecture, design patterns, standards, guidelines
   - "News & Updates": new model releases, product announcements, industry news
   - "Interesting Findings": research, experiments, curiosities, anything else
