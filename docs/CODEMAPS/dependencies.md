@@ -10,13 +10,13 @@
 | Package | Version | Purpose |
 |---------|---------|---------|
 | python-telegram-bot | 21.10 | Telegram bot framework |
-| anthropic | 0.49.0 | Claude API client |
+| anthropic | 1.13.0 | Claude API client |
 | notion-client | 2.3.0 | Notion API (async) |
 | httpx | 0.28.1 | Async HTTP client |
 | beautifulsoup4 | 4.13.3 | HTML parsing |
-| lxml | 5.3.1 | XML/HTML parsing backend |
+| lxml | 6.1.0 | XML/HTML parsing backend |
 | playwright | 1.50.0 | Headless browser (JS pages) |
-| python-dotenv | 1.0.1 | .env loading |
+| python-dotenv | 1.2.2 | .env loading |
 | loguru | 0.7.3 | Structured logging |
 
 ### Development
@@ -38,7 +38,7 @@
 - **Usage:** Receive group messages, send replies (HTML), delete placeholders
 - **Rate limit:** Unlimited for receiving; 30 msg/sec sending
 
-### Claude API (anthropic v0.49)
+### Claude API (anthropic v1.13)
 - **Auth:** ANTHROPIC_API_KEY
 - **Models:** Haiku 5.5 (phases 1, 3B, cross-ref), Sonnet 5.5 (phase 3A) — overridable via `CLAUDE_FAST_MODEL` / `CLAUDE_ANALYSIS_MODEL`, defaults in `bot/analyzer/claude.py`
 - **Calls per URL:** 3-4 (credibility + value + analysis + cross-ref)

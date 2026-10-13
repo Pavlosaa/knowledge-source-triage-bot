@@ -20,15 +20,15 @@ _FALLBACK_MODELS = {"claude-sonnet-5-5", "claude-opus-5-5", "claude-opus-5", "cl
 
 
 def request_options(model: str, effort: str) -> dict[str, Any]:
-    """Extra kwargs for messages.create() — params the pinned SDK version doesn't type yet."""
-    body: dict[str, Any] = {}
-    headers: dict[str, str] = {}
+    """Extra kwargs for messages.create(): effort, plus refusal fallback where the model supports it."""
+    options: dict[str, Any] = {}
     if not model.startswith(_NO_EFFORT_PREFIXES):
-        body["output_config"] = {"effort": effort}
+        options["output_config"] = {"effort": effort}
     if model in _FALLBACK_MODELS:
-        body["fallbacks"] = "default"
-        headers["anthropic-beta"] = "server-side-fallback-2026-07-01"
-    return {"extra_body": body, "extra_headers": headers}
+        # Beta param not typed on the non-beta messages.create(), so it goes through extra_body
+        options["extra_body"] = {"fallbacks": "default"}
+        options["extra_headers"] = {"anthropic-beta": "server-side-fallback-2026-07-01"}
+    return options
 
 
 def response_text(response: Any) -> str:
