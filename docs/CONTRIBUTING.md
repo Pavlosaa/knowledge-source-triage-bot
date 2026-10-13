@@ -2,7 +2,7 @@
 
 This document covers local development setup, running the bot, testing procedures, and code style.
 
-**Last Updated:** 2026-04-04
+**Last Updated:** 2026-10-13
 
 ---
 
@@ -57,10 +57,10 @@ cd knowledge-source-triage-bot
 ### 2. Create a Virtual Environment
 
 ```bash
-python3.12 -m venv venv
-source venv/bin/activate       # On macOS/Linux
+python3.12 -m venv .venv
+source .venv/bin/activate       # On macOS/Linux
 # OR
-venv\Scripts\activate.bat      # On Windows
+.venv\Scripts\activate.bat      # On Windows
 ```
 
 ### 3. Install Dependencies
@@ -256,7 +256,7 @@ pytest
 pytest --cov=bot --cov-report=term-missing
 
 # Run specific test file
-pytest tests/test_config.py -v
+pytest tests/test_pipeline.py -v
 ```
 
 Coverage goal: **80%+**
@@ -264,11 +264,14 @@ Coverage goal: **80%+**
 Test fixtures are in `tests/conftest.py` (mock env vars, etc.).
 
 **Existing test files:**
-- `tests/test_twitter.py` — 14 unit tests for X.com fetcher (94% coverage)
-- `tests/test_references.py` — 14 tests for cross-referencing logic (3 skip without notion_client)
-- `tests/test_extractor.py` — 10 tests for GitHub URL extraction
+- `tests/test_twitter.py` — 14 unit tests for X.com fetcher
+- `tests/test_references.py` — 19 tests for cross-referencing + backfill dedup (some skip without notion_client)
+- `tests/test_accept_handler.py` — 12 tests for the `/accept` override command
+- `tests/test_extractor.py` — 12 tests for GitHub URL extraction (incl. t.co resolution)
+- `tests/test_pipeline.py` — 9 tests for the analysis pipeline (mocked Claude)
+- `tests/test_formatter.py` — 6 tests for Telegram formatting (multi-result, /accept hint)
+- `tests/test_claude.py` — 5 tests for Claude request options + response parsing
 - `tests/test_pipeline_discovery.py` — 5 tests for discovery orchestrator
-- `tests/test_formatter.py` — 4 tests for multi-result Telegram formatting
 
 ### Debugging
 
@@ -343,7 +346,7 @@ knowledge-source-triage-bot/
 │   ├── __init__.py
 │   ├── config.py                 # Configuration loading + validation
 │   ├── telegram/
-│   │   ├── handler.py            # Message handler + queue processor
+│   │   ├── handler.py            # Message handler, queue processor, /accept
 │   │   └── formatter.py          # Result formatting for Telegram
 │   ├── fetcher/
 │   │   ├── twitter.py            # X.com tweets/articles (ScrapFly HTTP API)
@@ -352,7 +355,8 @@ knowledge-source-triage-bot/
 │   │   └── playwright.py         # Headless browser fallback
 │   ├── analyzer/
 │   │   ├── pipeline.py           # Analysis orchestration + discovery
-│   │   ├── prompts.py            # All Claude system prompts (5)
+│   │   ├── prompts.py            # All Claude system prompts (4) + TOPICS
+│   │   ├── claude.py             # Model defaults, request options, response parsing
 │   │   ├── extractor.py          # GitHub URL extraction from content
 │   │   └── json_utils.py         # JSON parsing from Claude responses
 │   └── notion/
@@ -361,7 +365,7 @@ knowledge-source-triage-bot/
 │       └── projects.py           # Project context cache
 ├── scripts/
 │   └── backfill_references.py    # One-time cross-reference backfill
-├── tests/                         # pytest test suite (50 tests)
+├── tests/                         # pytest test suite (82 tests)
 │   ├── __init__.py
 │   └── conftest.py               # Shared fixtures (mock env, etc.)
 ├── .github/workflows/             # CI/CD pipelines
@@ -402,7 +406,7 @@ knowledge-source-triage-bot/
 
 ```bash
 # Activate virtual environment
-source venv/bin/activate
+source .venv/bin/activate
 
 # Install a new dependency
 pip install package-name

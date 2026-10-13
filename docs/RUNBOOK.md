@@ -2,7 +2,7 @@
 
 This document covers production deployment, systemd service management, logging, troubleshooting, and manual prerequisites for the AI Knowledge Source Triage Bot.
 
-**Last Updated:** 2026-04-04
+**Last Updated:** 2026-10-13
 
 ---
 
@@ -26,6 +26,18 @@ tail -f logs/errors.log               # Error log only
 ---
 
 ## Deployment to Oracle Cloud (systemd)
+
+### Current Production Host
+
+| | |
+|---|---|
+| VM | `reti-apps-rebuild` — VM.Standard.E5.Flex (1 OCPU / 12 GB), eu-frankfurt-1 |
+| Public IP | `89.168.123.102` (reserved — survives VM rebuilds) |
+| SSH user | `ubuntu` |
+| App path | `/home/ubuntu/knowledge-source-triage-bot` |
+| Service | `triage-bot.service` |
+
+The VM was rebuilt from a boot-volume clone on 2026-06-20 (the old instance at `130.61.130.58` is stopped). It is shared with other apps; VM-level infra (security list, backups, reboots) is managed in the `Pavlosaa/oracle-vm-devops` repo — check its `env.sh` / `HANDOVER.md` before changing anything on the host. The GitHub secret `DEPLOY_HOST` must point to the reserved IP.
 
 ### Prerequisites
 
@@ -380,14 +392,14 @@ Run after deploying F1 to link existing records:
 
 ```bash
 cd ~/knowledge-source-triage-bot
-source venv/bin/activate
+source .venv/bin/activate
 python -m scripts.backfill_references
 ```
 
 **What it does:**
 - Queries all records from AI Sources DB
 - Finds tag/topic overlap candidates
-- Claude Haiku verifies semantic relevance
+- Claude (`CLAUDE_FAST_MODEL`, default Haiku 5.5) verifies semantic relevance
 - Writes bidirectional Notion Relations
 - Rate-limited: 0.35s between Notion API calls
 - Skips already-linked pairs (idempotent)
@@ -399,7 +411,7 @@ python -m scripts.backfill_references
 # Final: "Backfill complete: N total relations created"
 ```
 
-**API cost estimate:** ~1 Claude Haiku call per record with overlap candidates.
+**API cost estimate:** ~1 fast-model Claude call per record with overlap candidates.
 
 ---
 
@@ -526,7 +538,7 @@ sudo systemctl is-active triage-bot.service   # fails the deploy if the bot didn
 
 Manual trigger is also available via `workflow_dispatch` in GitHub Actions UI (Actions → Deploy → Run workflow).
 
-**Deploy fails with `dial tcp <host>:22: i/o timeout`:** the runner can't reach the server over SSH. Check in the Oracle Cloud console that the instance is running (Always Free instances can be stopped as idle), that its public IP still matches the `DEPLOY_HOST` secret, and that the VCN security list allows ingress on port 22 from GitHub Actions runners. Then run the Deploy workflow manually.
+**Deploy fails with `dial tcp <host>:22: i/o timeout`:** the runner can't reach the server over SSH. First check that the `DEPLOY_HOST` secret is the current reserved IP (see *Current Production Host*) — a stale IP after the 2026-06-20 VM rebuild caused exactly this failure in October 2026. Then check in the Oracle Cloud console that the instance is running and that the security list still allows ingress on port 22. Then run the Deploy workflow manually.
 
 **Required GitHub Secrets:** `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`
 

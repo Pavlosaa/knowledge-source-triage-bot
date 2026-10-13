@@ -39,7 +39,7 @@
 - [x] pipeline.py — orchestrate 3-phase Claude calls (Haiku → Haiku → Sonnet/Haiku)
 - [x] pipeline.py — JSON response parsing + validation
 - [x] pipeline.py — exponential backoff retry logic (max 3, 2^n seconds)
-- [ ] Unit tests for pipeline with mocked Claude responses
+- [x] Unit tests for pipeline with mocked Claude responses (`tests/test_pipeline.py`, PR #13)
 
 ## ✅ Phase 5: Wire Everything Together — DONE
 - [x] pipeline.py — integrate fetchers + Claude + Notion into run_pipeline()
@@ -61,9 +61,9 @@
 
 ---
 
-## LIVE STATE — 2026-03-07
+## LIVE STATE — 2026-10-13
 
-**Server:** Oracle Cloud 130.61.130.58 — `triage-bot.service` active, auto-restart on failure
+**Server:** Oracle Cloud `reti-apps-rebuild`, reserved IP 89.168.123.102 (VM rebuilt 2026-06-20; old 130.61.130.58 stopped) — `triage-bot.service` active, auto-restart on failure. Deploy verified end-to-end 2026-10-13 (Haiku 5.5 / Sonnet 5.5, anthropic 1.13).
 
 **What works end-to-end (verified live):**
 - GitHub URLs → fetch repo + README → 3-phase Claude → Notion record + Telegram reply
@@ -119,12 +119,24 @@
 - [x] `format_results()` pro multi-record Telegram replies
 - [x] Handler + main.py rewiring
 - [x] 19 unit testů (extractor, discovery, formatter)
-- [ ] Merge PR #9 + deploy
+- [x] Merge PR #9 + deploy
+
+## ✅ Phase 13: Override & topics — DONE (2026-04)
+- [x] Remove Phase 2 value gate — only credibility < 2 or fetch failure rejects (PR #13)
+- [x] `/accept` reply command to override a rejection, "Manual Override" tag (PR #13)
+- [x] "Tutorials" topic category — 7 topics (PR #14)
+
+## ✅ Phase 14: Model & dependency refresh — DONE (2026-10-13)
+- [x] Claude Haiku 5.5 / Sonnet 5.5, configurable via `CLAUDE_FAST_MODEL` / `CLAUDE_ANALYSIS_MODEL` (PR #15)
+- [x] Thinking-aware response parsing, effort, refusal fallback in `bot/analyzer/claude.py` (PR #15)
+- [x] lxml 6.1.0 + python-dotenv 1.2.2 (pip-audit advisories) (PR #15)
+- [x] anthropic SDK 0.49.0 → 1.13.0 (PR #16)
+- [x] Deploy: manual `workflow_dispatch` fixed, `is-active` check after restart (PR #17)
+- [x] `DEPLOY_HOST` secret updated to the reserved IP after the VM rebuild; deploy + live test OK
 
 ## ⏳ Remaining / Future Work
 
 ### Testy (priorita: střední)
 
 - [ ] Unit tests pro fetchers — article.py, github.py, playwright.py (mocked HTTP)
-- [ ] Unit tests pro pipeline — mocked Claude responses, all 4 phases
 - [ ] Integration test — full pipeline with mocked fetcher + Claude + Notion

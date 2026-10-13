@@ -2,7 +2,7 @@
 
 This document describes all environment variables required and optional for the AI Knowledge Source Triage Bot.
 
-**Last Updated:** 2026-03-20
+**Last Updated:** 2026-10-13
 
 <!-- AUTO-GENERATED -->
 
@@ -36,6 +36,10 @@ cp .env.example .env
 |----------|---------|--------|---------|---------|
 | `SCRAPFLY_API_KEY` | ScrapFly API key for X.com content scraping (enables tweet/article fetching) | String | `scp_...` | Not set (X.com URLs skipped gracefully) |
 | `GITHUB_TOKEN` | GitHub API token (increases rate limit from 60 to 5000 req/h) | String (starts with `ghp_`) | `ghp_...` | Not set (60 req/h limit) |
+| `CLAUDE_FAST_MODEL` | Model for credibility check, rejection summary and cross-referencing | Claude model ID | `claude-haiku-5-5` | `claude-haiku-5-5` |
+| `CLAUDE_ANALYSIS_MODEL` | Model for full analysis (Phase 3A) | Claude model ID | `claude-sonnet-5-5` | `claude-sonnet-5-5` |
+
+Model defaults live in `bot/analyzer/claude.py`. Pin a specific model ID rather than a floating alias — new model generations change API behavior (thinking blocks, effort), so a switch should be a deliberate change. `scripts/backfill_references.py` also reads `CLAUDE_FAST_MODEL`.
 
 ---
 
