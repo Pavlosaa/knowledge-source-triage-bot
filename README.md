@@ -1,17 +1,22 @@
 # AI Knowledge Source Triage Bot
 
-Personal Telegram bot that triages AI-related links shared in a group chat. Analyzes content quality via a 3-phase Claude pipeline and creates structured records in Notion.
+Personal Telegram bot that triages AI-related links shared in a group chat. Analyzes content via a multi-phase Claude pipeline and creates structured records in Notion.
 
 ## What it does
 
 1. Someone shares a link in a Telegram group (tweet, GitHub repo, article)
 2. Bot fetches the content (ScrapFly / Playwright / GitHub API / httpx+BS4)
-3. Claude runs a 3-phase analysis:
-   - Phase 1: Credibility check (Haiku)
-   - Phase 2: Value assessment (Haiku)
-   - Phase 3: Full analysis or rejection summary (Sonnet / Haiku)
-4. Valuable sources get a Notion record with summary, key principles, use cases, and project relevance
-5. Bot replies with the result and a link to the Notion page
+3. Claude analyzes it:
+   - Phase 1: Credibility check (fast model, Haiku 5.5) — score < 2 rejects the source
+   - Phase 3A: Full analysis (analysis model, Sonnet 5.5) for everything that passes
+   - Phase 3B: Short rejection summary (fast model) for low-credibility sources
+4. Accepted sources get a Notion record with summary, key principles, use cases, real-world example and project relevance
+5. GitHub repos linked from an article/tweet are analyzed as separate records (discovery), and related records are cross-linked in Notion
+6. Bot replies with the result and a link to the Notion page(s)
+
+Rejected the wrong link? Reply `/accept` to the bot's rejection message to force a re-analysis (adds a "Manual Override" tag).
+
+Models are configurable via `CLAUDE_FAST_MODEL` / `CLAUDE_ANALYSIS_MODEL` (see [docs/ENV.md](docs/ENV.md)).
 
 ## Supported content types
 
@@ -24,7 +29,7 @@ Personal Telegram bot that triages AI-related links shared in a group chat. Anal
 
 ## Tech stack
 
-Python 3.12 | python-telegram-bot v21 | httpx | Playwright | BeautifulSoup4 | anthropic | notion-client | loguru
+Python 3.12 | python-telegram-bot v21 | httpx | Playwright | BeautifulSoup4 | anthropic 1.x | notion-client | loguru
 
 ## CI/CD
 
@@ -37,7 +42,7 @@ GitHub Actions pipeline runs on every push/PR to `main`:
 | **test** | pytest | Unit tests with coverage |
 | **security** | pip-audit + TruffleHog | CVE scanning + secret detection |
 
-Auto-deploy to Oracle Cloud on successful CI (requires GitHub Secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`).
+Auto-deploy to Oracle Cloud on successful CI, or manually via Actions → Deploy → Run workflow (requires GitHub Secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`). The deploy fails if `triage-bot.service` is not active after restart.
 
 Branch protection on `main`: PR required, all CI checks must pass, no force push.
 
@@ -72,8 +77,8 @@ python main.py
 
 ```bash
 # On the server
-git clone <repo-url>
-cd ai-knowledge-source-triage
+git clone https://github.com/Pavlosaa/knowledge-source-triage-bot.git
+cd knowledge-source-triage-bot
 
 python3.12 -m venv .venv
 source .venv/bin/activate
@@ -96,18 +101,19 @@ Full deployment guide: [docs/RUNBOOK.md](docs/RUNBOOK.md)
 
 ```
 bot/
-  analyzer/       # Claude pipeline (prompts.py, pipeline.py)
+  analyzer/       # Claude pipeline (pipeline.py, prompts.py, claude.py, extractor.py)
   fetcher/        # Content fetchers (twitter, playwright, article, github)
-  notion/         # Notion writer + projects cache
+  notion/         # Notion writer, cross-references, projects cache
   telegram/       # Message handler + formatter
   config.py       # Env var loading with fail-fast validation
 main.py           # Entry point
+scripts/          # backfill_references.py (one-time cross-ref backfill)
 tests/            # pytest test suite + fixtures
 .github/workflows/ # CI (lint, typecheck, test, security) + deploy
 pyproject.toml    # ruff, mypy, pytest config
 systemd/          # triage-bot.service unit file
-docs/             # Design doc, runbook, codemaps
-tasks/            # todo.md, lessons.md
+docs/             # Design doc, runbook, codemaps, plans
+tasks/            # todo.md, ISSUES.md, lessons.md
 ```
 
 ## Environment variables

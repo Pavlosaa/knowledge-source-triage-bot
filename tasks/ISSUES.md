@@ -5,7 +5,7 @@
 | # | Název | Severity | Status | Datum | Fix (commit/PR) | Plán opravy |
 |---|-------|----------|--------|-------|-----------------|-------------|
 | 1 | Cross-ref Claude response truncation | High | 🟢 FIXED | 2026-04-04 | PR #10 (`091cccb`) | — |
-| 2 | F2 discovery nefunguje — embedded_urls=0 + low-value rejection | High | 🟡 PENDING VERIFICATION | 2026-04-04 | PR #11 | — |
+| 2 | F2 discovery nefunguje — embedded_urls=0 + low-value rejection | High | 🟡 PENDING VERIFICATION | 2026-04-04 | PR #11, #12, #13 | — |
 
 **Statistiky:** 2 celkem | 1 🟢 fixed | 0 🔴 open | 1 🟡 pending
 
@@ -39,7 +39,7 @@ Cross-reference by měl zapsat relevantní relace do Notion. Při velkém počtu
 
 ### Issue #2: F2 discovery nefunguje — embedded_urls=0 + low-value rejection
 
-**Status:** 🟡 PENDING VERIFICATION (PR #11)
+**Status:** 🟡 PENDING VERIFICATION (PR #11, #12, #13)
 **Discovered:** 2026-04-04
 **Reporter:** User
 **Severity:** High
@@ -62,3 +62,9 @@ Bot by měl extrahovat GitHub URL z tweetu (i z link card), analyzovat odkazovan
 1. `twitter.py`: extrahovat href z `card.wrapper` `<a>` tagů (link preview cards)
 2. `extractor.py`: resolve t.co shortlinks přes HTTP HEAD redirect → získat finální GitHub URL
 3. `extractor.py` je nyní `async` (kvůli HTTP resolve)
+
+**Navazující změny:**
+- PR #12 — `.git` suffix strip, ScrapFly retry, další opravy discovery.
+- PR #13 — Phase 2 (value gate) odstraněna, takže root cause 2 (low-value rejection blokuje discovery) už v kódu neexistuje.
+
+**Zbývá:** ověřit na živém botu s tweetem s GitHub odkazem (viz Reprodukce) a issue zavřít.
