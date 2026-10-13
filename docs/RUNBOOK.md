@@ -520,9 +520,13 @@ git pull origin main
 source .venv/bin/activate
 pip install -r requirements.txt
 sudo systemctl restart triage-bot.service
+sleep 5
+sudo systemctl is-active triage-bot.service   # fails the deploy if the bot didn't start
 ```
 
-Manual trigger is also available via `workflow_dispatch` in GitHub Actions UI.
+Manual trigger is also available via `workflow_dispatch` in GitHub Actions UI (Actions → Deploy → Run workflow).
+
+**Deploy fails with `dial tcp <host>:22: i/o timeout`:** the runner can't reach the server over SSH. Check in the Oracle Cloud console that the instance is running (Always Free instances can be stopped as idle), that its public IP still matches the `DEPLOY_HOST` secret, and that the VCN security list allows ingress on port 22 from GitHub Actions runners. Then run the Deploy workflow manually.
 
 **Required GitHub Secrets:** `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`
 

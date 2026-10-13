@@ -10,7 +10,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Deploy to Oracle Cloud
         uses: appleboy/ssh-action@v1
@@ -24,3 +24,5 @@ jobs:
             source .venv/bin/activate
             pip install -r requirements.txt
             sudo systemctl restart triage-bot.service
+            sleep 5
+            sudo systemctl is-active triage-bot.service
