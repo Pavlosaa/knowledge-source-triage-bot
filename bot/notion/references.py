@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 import anthropic
 from loguru import logger
 
+from bot.analyzer.claude import DEFAULT_FAST_MODEL, MAX_TOKENS, request_options, response_text
 from bot.analyzer.json_utils import strip_markdown_json
 from bot.analyzer.prompts import CROSS_REFERENCE_SYSTEM
 
@@ -35,13 +36,14 @@ async def find_related_sources(
     new_record: AnalysisResult,
     new_page_id: str,
     api_key: str,
+    model: str = DEFAULT_FAST_MODEL,
 ) -> list[str]:
     """
     Find existing records related to the new one.
 
     1. Query all records from DB
     2. Filter by tag/topic overlap
-    3. Claude (Haiku) semantic verification
+    3. Claude semantic verification (fast model)
     4. Return list of related page IDs
     """
     candidates = await _query_candidates(client, db_id, new_page_id)
@@ -54,7 +56,7 @@ async def find_related_sources(
         return []
 
     logger.info(f"Cross-ref: {len(filtered)} candidates passed overlap filter")
-    return await _verify_with_claude(new_record, filtered, api_key)
+    return await _verify_with_claude(new_record, filtered, api_key, model)
 
 
 async def write_relations(
@@ -147,6 +149,7 @@ async def _verify_with_claude(
     new_record: AnalysisResult,
     candidates: list[dict[str, Any]],
     api_key: str,
+    model: str,
 ) -> list[str]:
     """Ask Claude to verify which candidates are genuinely related."""
     new_info = (
@@ -166,15 +169,14 @@ async def _verify_with_claude(
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
     response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=1000,
+        model=model,
+        max_tokens=MAX_TOKENS,
         system=CROSS_REFERENCE_SYSTEM,
         messages=[{"role": "user", "content": user_prompt}],
+        **request_options(model, "low"),
     )
 
-    block = response.content[0]
-    raw_text = block.text if hasattr(block, "text") else ""  # type: ignore[union-attr]
-    text = strip_markdown_json(raw_text.strip())
+    text = strip_markdown_json(response_text(response))
 
     try:
         parsed = json.loads(text)

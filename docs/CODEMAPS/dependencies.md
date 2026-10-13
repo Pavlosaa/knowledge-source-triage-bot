@@ -40,7 +40,7 @@
 
 ### Claude API (anthropic v0.49)
 - **Auth:** ANTHROPIC_API_KEY
-- **Models:** Haiku (phases 1, 2, 3B, cross-ref), Sonnet (phase 3A)
+- **Models:** Haiku 5.5 (phases 1, 3B, cross-ref), Sonnet 5.5 (phase 3A) — overridable via `CLAUDE_FAST_MODEL` / `CLAUDE_ANALYSIS_MODEL`, defaults in `bot/analyzer/claude.py`
 - **Calls per URL:** 3-4 (credibility + value + analysis + cross-ref)
 - **With discovery:** Up to 4 × (1 + N repos) calls per message
 - **Retry:** Exponential backoff, 3 attempts

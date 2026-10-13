@@ -47,13 +47,15 @@ PageContent:    url, title?, body                (playwright.py)
 
 ## Claude Prompts (prompts.py)
 
-| Prompt | Model | Max Tokens | Output Schema |
-|--------|-------|-----------|---------------|
-| CREDIBILITY_SYSTEM | Haiku | 150 | `{credibility_score: 1-5, credibility_reason}` |
-| VALUE_ASSESSMENT_SYSTEM | Haiku | 150 | `{has_value: bool, value_score: 1-5, rejection_reason?}` |
-| FULL_ANALYSIS_SYSTEM | Sonnet | 2000 | `{title, topics[], core_summary, key_principles[], use_cases[], real_world_example, discovery_score, tags[], project_recommendations[]}` |
-| REJECTION_SUMMARY_SYSTEM | Haiku | 200 | `{brief_summary?, rejection_reason}` |
-| CROSS_REFERENCE_SYSTEM | Haiku | 500 | `{related: [{page_id, reason}]}` |
+| Prompt | Model | Effort | Output Schema |
+|--------|-------|--------|---------------|
+| CREDIBILITY_SYSTEM | fast (Haiku 5.5) | low | `{credibility_score: 1-5, credibility_reason}` |
+| VALUE_ASSESSMENT_SYSTEM | fast (Haiku 5.5) | low | `{has_value: bool, value_score: 1-5, rejection_reason?}` |
+| FULL_ANALYSIS_SYSTEM | analysis (Sonnet 5.5) | medium | `{title, topics[], core_summary, key_principles[], use_cases[], real_world_example, discovery_score, tags[], project_recommendations[]}` |
+| REJECTION_SUMMARY_SYSTEM | fast (Haiku 5.5) | low | `{brief_summary?, rejection_reason}` |
+| CROSS_REFERENCE_SYSTEM | fast (Haiku 5.5) | low | `{related: [{page_id, reason}]}` |
+
+`max_tokens` is 16 000 for all calls (a ceiling — thinking tokens count against it). Models are set via `CLAUDE_FAST_MODEL` / `CLAUDE_ANALYSIS_MODEL`.
 
 All text output in Czech except tags (English). Topics from 6 predefined categories.
 

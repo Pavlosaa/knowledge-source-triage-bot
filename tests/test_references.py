@@ -238,6 +238,7 @@ class TestFindRelatedSources:
 
         mock_response = MagicMock()
         mock_block = MagicMock()
+        mock_block.type = "text"
         mock_block.text = '{"related": [{"page_id": "page-old", "reason": "Oba se zabývají RAG"}]}'
         mock_response.content = [mock_block]
 

@@ -16,6 +16,8 @@ from dotenv import load_dotenv
 from loguru import logger
 from notion_client import AsyncClient
 
+from bot.analyzer.claude import DEFAULT_FAST_MODEL
+
 load_dotenv()
 
 # Rate-limit: max ~3 req/sec for Notion API
@@ -26,6 +28,7 @@ async def main() -> None:
     notion_key = os.environ.get("NOTION_API_KEY")
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
     rnd_page_id = os.environ.get("NOTION_RND_PAGE_ID")
+    model = os.environ.get("CLAUDE_FAST_MODEL", "").strip() or DEFAULT_FAST_MODEL
 
     if not all([notion_key, anthropic_key, rnd_page_id]):
         logger.error("Missing required env vars: NOTION_API_KEY, ANTHROPIC_API_KEY, NOTION_RND_PAGE_ID")
@@ -68,7 +71,7 @@ async def main() -> None:
             continue
 
         # Claude verification
-        related_ids = await _verify_candidates(record, candidates, anthropic_key)
+        related_ids = await _verify_candidates(record, candidates, anthropic_key, model)
         if not related_ids:
             continue
 
@@ -194,10 +197,12 @@ async def _verify_candidates(
     record: dict[str, Any],
     candidates: list[dict[str, Any]],
     api_key: str,
+    model: str,
 ) -> list[str]:
-    """Claude Haiku verification of candidate relevance."""
+    """Claude (fast model) verification of candidate relevance."""
     import anthropic
 
+    from bot.analyzer.claude import MAX_TOKENS, request_options, response_text
     from bot.analyzer.json_utils import strip_markdown_json
     from bot.analyzer.prompts import CROSS_REFERENCE_SYSTEM
 
@@ -213,14 +218,13 @@ async def _verify_candidates(
 
     try:
         response = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=500,
+            model=model,
+            max_tokens=MAX_TOKENS,
             system=CROSS_REFERENCE_SYSTEM,
             messages=[{"role": "user", "content": user_prompt}],
+            **request_options(model, "low"),
         )
-        block = response.content[0]
-        raw_text = block.text if hasattr(block, "text") else ""  # type: ignore[union-attr]
-        text = strip_markdown_json(raw_text.strip())
+        text = strip_markdown_json(response_text(response))
         parsed = json.loads(text)
         related = parsed.get("related", [])
         return [item["page_id"] for item in related if "page_id" in item]

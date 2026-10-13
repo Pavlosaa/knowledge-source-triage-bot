@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 from loguru import logger
 
+from bot.analyzer.claude import DEFAULT_ANALYSIS_MODEL, DEFAULT_FAST_MODEL
+
 load_dotenv()
 
 
@@ -20,6 +22,8 @@ class Config:
 
     # Claude
     anthropic_api_key: str
+    claude_fast_model: str  # phase 1, phase 3B, cross-referencing
+    claude_analysis_model: str  # phase 3A full analysis
 
     # Notion
     notion_api_key: str
@@ -47,6 +51,8 @@ def load_config() -> Config:
     telegram_bot_token = require("TELEGRAM_BOT_TOKEN")
     telegram_group_id_raw = require("TELEGRAM_GROUP_ID")
     anthropic_api_key = require("ANTHROPIC_API_KEY")
+    claude_fast_model = optional("CLAUDE_FAST_MODEL") or DEFAULT_FAST_MODEL
+    claude_analysis_model = optional("CLAUDE_ANALYSIS_MODEL") or DEFAULT_ANALYSIS_MODEL
     notion_api_key = require("NOTION_API_KEY")
     notion_rnd_page_id = require("NOTION_RND_PAGE_ID")
     notion_projects_page_id = require("NOTION_PROJECTS_PAGE_ID")
@@ -68,6 +74,8 @@ def load_config() -> Config:
         telegram_group_id=telegram_group_id,
         scrapfly_api_key=scrapfly_api_key,
         anthropic_api_key=anthropic_api_key,
+        claude_fast_model=claude_fast_model,
+        claude_analysis_model=claude_analysis_model,
         notion_api_key=notion_api_key,
         notion_rnd_page_id=notion_rnd_page_id,
         notion_projects_page_id=notion_projects_page_id,

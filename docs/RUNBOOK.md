@@ -184,6 +184,8 @@ Required values:
 Optional:
 - `SCRAPFLY_API_KEY` — for X.com tweet/article support
 - `GITHUB_TOKEN` — to increase API rate limits
+- `CLAUDE_FAST_MODEL` — model for credibility check, rejection summary and cross-referencing (default `claude-haiku-5-5`)
+- `CLAUDE_ANALYSIS_MODEL` — model for full analysis (default `claude-sonnet-5-5`)
 
 Save with `Ctrl+X`, then `Y`, then `Enter` (if using nano).
 
@@ -487,7 +489,7 @@ Common causes:
 |-------|-----|
 | `invalid_api_key` | Check `ANTHROPIC_API_KEY` in `.env`. Get new key from https://console.anthropic.com |
 | `rate_limit_error` | Rate limited (default: 2 req/min). Space out requests or wait. |
-| `unknown_model: claude-opus-4.6` | Model name wrong in prompts.py. Should be `claude-opus-4-6`. |
+| `unknown_model: claude-opus-4.6` | Model ID is wrong. Check `CLAUDE_FAST_MODEL` / `CLAUDE_ANALYSIS_MODEL` in `.env` (or defaults in `bot/analyzer/claude.py`). |
 
 ### Issue: Notion pages not created
 
