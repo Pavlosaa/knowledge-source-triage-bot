@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 import anthropic
 from loguru import logger
 
+from bot.analyzer.claude import MAX_TOKENS, request_options, response_text
 from bot.analyzer.extractor import extract_github_urls
 from bot.analyzer.json_utils import strip_markdown_json
 from bot.analyzer.prompts import (
@@ -42,9 +43,6 @@ _PHASE3_CONTENT_LIMIT = 6_000
 
 # Credibility score below which we reject without further analysis
 _CREDIBILITY_REJECT_THRESHOLD = 2
-
-_HAIKU = "claude-haiku-4-5-20251001"
-_SONNET = "claude-sonnet-4-6"
 
 
 @dataclass
@@ -149,8 +147,8 @@ async def run_pipeline(
             cred = await _call_claude(
                 system=CREDIBILITY_SYSTEM,
                 user=_credibility_prompt(url, content_text[:_PHASE1_CONTENT_LIMIT]),
-                model=_HAIKU,
-                max_tokens=150,
+                model=config.claude_fast_model,
+                effort="low",
                 api_key=config.anthropic_api_key,
             )
             result.credibility_score = int(cred.get("credibility_score", 3))
@@ -170,8 +168,8 @@ async def run_pipeline(
             rejection = await _call_claude(
                 system=REJECTION_SUMMARY_SYSTEM,
                 user=content_text[:_PHASE1_CONTENT_LIMIT],
-                model=_HAIKU,
-                max_tokens=200,
+                model=config.claude_fast_model,
+                effort="low",
                 api_key=config.anthropic_api_key,
             )
             result.brief_summary = rejection.get("brief_summary")
@@ -193,8 +191,8 @@ async def run_pipeline(
         analysis = await _call_claude(
             system=FULL_ANALYSIS_SYSTEM,
             user=phase3_user,
-            model=_SONNET,
-            max_tokens=2000,
+            model=config.claude_analysis_model,
+            effort="medium",
             api_key=config.anthropic_api_key,
         )
     except Exception as exc:
@@ -238,6 +236,7 @@ async def run_pipeline(
                 result,
                 page_id,
                 config.anthropic_api_key,
+                model=config.claude_fast_model,
             )
             if related_ids:
                 await write_relations(writer.client, page_id, related_ids)
@@ -449,7 +448,7 @@ async def _call_claude(
     system: str,
     user: str,
     model: str,
-    max_tokens: int,
+    effort: str,
     api_key: str,
     max_attempts: int = 3,
 ) -> dict:
@@ -461,14 +460,12 @@ async def _call_claude(
         try:
             response = await client.messages.create(
                 model=model,
-                max_tokens=max_tokens,
+                max_tokens=MAX_TOKENS,
                 system=system,
                 messages=[{"role": "user", "content": user}],
+                **request_options(model, effort),
             )
-            block = response.content[0]
-            raw_text = block.text if hasattr(block, "text") else ""  # type: ignore[union-attr]
-            text = raw_text.strip()
-            text = strip_markdown_json(text)
+            text = strip_markdown_json(response_text(response))
             return json.loads(text)  # type: ignore[no-any-return]
         except json.JSONDecodeError as exc:
             logger.warning(f"Claude returned invalid JSON (attempt {attempt + 1}): {exc}")
